@@ -1,0 +1,961 @@
+# Room API 第一版技术方案
+
+## 1. 项目目标
+
+Room 是一个多人语音房 App。第一版后端只做最小可用能力：
+
+- 用户可以注册账号并登录 App
+- 用户可以创建房间
+- 用户可以进入房间
+- 房间内可以发送文字消息
+- 房间内可以看到成员加入、离开、房主变更、开麦、闭麦状态
+- 后端通过 WebSocket 做房间实时事件同步
+
+第一版不自研音频传输。语音通话能力后续接第三方 RTC 服务，后端第一版只维护开麦状态。
+
+## 2. 技术选型
+
+第一版使用简单直接的技术栈：
+
+- 语言：Go
+- Web 框架：Gin
+- 数据库：MySQL
+- ORM：GORM
+- 实时通信：WebSocket
+- 鉴权方式：JWT
+- 配置方式：环境变量
+- 邮件发送：QQ 邮箱 SMTP
+- 对象存储：腾讯云 COS
+- 数据库建表：GORM AutoMigrate
+- 日志：Gin 默认日志
+- CORS：支持
+
+选择 MySQL 是为了方便后续上线部署、数据迁移和与常见后端生态集成。
+
+基础约定：
+
+- 服务端口：`8080`
+- 数据库名：`room`
+- Go module：`room-api`
+- 时区：`Asia/Shanghai`
+- 时间格式：ISO 8601，例如 `2026-06-16T16:00:00+08:00`
+- 本地启动：`go run ./cmd/api`
+- 第一版接口文档：Markdown
+- 第一版先不接 Swagger/OpenAPI
+- 第一版先不写 Docker，接口跑通后再补
+- 第一版先跑通主流程，测试后补
+
+## 3. 项目结构
+
+```txt
+room-api/
+  cmd/
+    api/
+      main.go
+  internal/
+    config/
+    handler/
+    middleware/
+    model/
+    repository/
+    router/
+    service/
+    realtime/
+    auth/
+  docs/
+  .env.example
+  TECHNICAL_PLAN.md
+  README.md
+  go.mod
+```
+
+目录说明：
+
+- `cmd/api`：服务启动入口
+- `internal/config`：读取配置
+- `internal/router`：路由注册
+- `internal/handler`：HTTP 和 WebSocket 请求处理
+- `internal/service`：业务逻辑
+- `internal/repository`：数据库操作
+- `internal/model`：数据模型
+- `internal/middleware`：JWT 鉴权中间件
+- `internal/realtime`：WebSocket 房间连接管理和事件广播
+- `internal/auth`：JWT 生成与解析
+- `docs`：接口文档
+
+## 4. 工程约定
+
+### 4.1 配置
+
+第一版使用 `.env` 管理配置。
+
+仓库提供 `.env.example`，本地开发复制为 `.env` 后填写真实配置。
+
+### 4.2 数据库建表
+
+第一版使用 GORM AutoMigrate 自动创建和更新表结构。
+
+云数据库需要提前创建 database：
+
+```txt
+room
+```
+
+服务启动后连接云数据库，并执行 AutoMigrate 创建所需数据表。
+
+第一版不维护 SQL migration 文件。
+
+### 4.3 日志
+
+第一版使用 Gin 默认日志。
+
+暂时不引入 zap、logrus 等日志库。
+
+### 4.4 CORS
+
+第一版后端支持 CORS。
+
+规则：
+
+- 开发期允许所有来源
+- 上线后通过环境变量配置允许来源
+
+### 4.5 健康检查
+
+```txt
+GET /health
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "status": "up"
+  }
+}
+```
+
+## 5. 核心模块
+
+### 5.1 用户
+
+用户首次使用 App 时需要注册账号。
+
+用户登录成功后，后端返回 JWT。
+
+用户包含：
+
+- 用户 ID
+- 用户名
+- 邮箱
+- 昵称
+- 头像，必填
+- 密码哈希
+- 创建时间
+
+第一版使用用户名和密码登录，并通过邮箱验证码找回密码。
+
+字段限制：
+
+- 用户名：4-20 位，字母、数字、下划线
+- 密码：6-20 位
+- 昵称：1-8 位，不可重复
+- 邮箱：标准邮箱格式
+- 头像：必填，无默认头像
+
+产品提示：
+
+```txt
+请填写真实邮箱，用于注册验证和找回密码。
+```
+
+密码保存规则：
+
+- 数据库只保存密码哈希
+- 不保存明文密码
+- 第一版使用 `bcrypt` 生成密码哈希
+
+JWT 规则：
+
+- token 有效期 7 天
+- 第一版不做 refresh token
+
+### 5.2 房间
+
+用户可以创建房间，也可以进入已有房间。
+
+房间包含：
+
+- 房间名称
+- 当前人数
+- 最大人数
+
+房间只要存在就可以进入。
+
+创建房间时只能选择：
+
+- `2`：2 人房间
+- `8`：8 人房间
+
+房主离开房间后，后端从房间内剩余成员中选择一个人成为新房主。
+
+房间名称不需要用户输入，由后端自动生成：
+
+```txt
+用户昵称 + 的房间
+```
+
+例如：
+
+```txt
+Alex 的房间
+```
+
+一个用户同一时间只能在一个房间。用户进入房间前，后端需要检查该用户是否已经在其他房间中。
+
+房间规则：
+
+- 2 人房包含房主，即房主 + 1 名成员
+- 8 人房包含房主，即房主 + 7 名成员
+- 创建房间只走 HTTP，创建成功后前端再连接 WebSocket
+- 房间名称在创建时固定，后续用户修改昵称不会影响已创建房间名
+- 房间列表里的房主头像读取用户当前头像
+
+### 5.3 房间成员
+
+用户进入房间后成为房间成员。
+
+成员状态包含：
+
+- 是否开麦
+- 是否为房主
+- 加入时间
+
+第一版不做管理员、禁言、踢人。
+
+房主第一版只用于身份展示，不包含踢人、禁麦、关闭房间等额外权限。
+
+房主退出规则：
+
+- 如果房主离开房间，并且房间内还有其他成员，后端自动转让房主
+- 新房主优先选择最早进入房间的成员
+- 房主变更后，后端广播 `room.owner_changed` 事件
+- 如果用户离开后房间内没有其他成员，后端删除房间、房间成员和房间消息
+
+### 5.4 文字聊天
+
+房间内用户可以发送文字消息。
+
+消息会：
+
+- 写入数据库
+- 通过 WebSocket 广播给房间内成员
+- 支持按时间倒序分页读取历史消息
+
+第一版只支持文本消息。
+
+### 5.5 WebSocket 实时同步
+
+用户进入房间页面后建立 WebSocket 连接。
+
+WebSocket 负责同步：
+
+- 成员加入
+- 成员离开
+- 文本消息
+- 开麦状态变化
+- 闭麦状态变化
+
+第一版 WebSocket 连接只保存在服务内存中。
+
+第一版规则：
+
+- WebSocket 断开等于离开房间
+- 断开后执行离开房间流程
+- 如果是房主断开，也会触发房主自动转让
+- 第一版不做断线等待期
+
+### 5.6 头像上传
+
+用户可以上传头像。
+
+第一版头像文件存储到腾讯云 COS，数据库只保存头像 URL。
+
+上传成功后，用户资料中的 `avatar_url` 更新为 COS 文件访问地址。
+
+头像是必填项，不提供默认头像。注册前可以通过免登录头像上传接口先上传头像，注册时提交已上传头像的 URL。
+
+头像限制：
+
+- 文件格式：jpg、jpeg、png、webp
+- 文件大小：最大 2MB
+- COS 路径：`avatars/{user_id}/{timestamp}.{ext}`
+- 第一版头像文件公开读
+
+## 6. 数据表设计
+
+### 6.1 users
+
+```sql
+CREATE TABLE users (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(20) NOT NULL,
+  email VARCHAR(128) NOT NULL,
+  nickname VARCHAR(8) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  avatar_url VARCHAR(512) NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  UNIQUE KEY uk_users_username (username),
+  UNIQUE KEY uk_users_email (email),
+  UNIQUE KEY uk_users_nickname (nickname)
+);
+```
+
+### 6.2 email_verification_codes
+
+```sql
+CREATE TABLE email_verification_codes (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  email VARCHAR(128) NOT NULL,
+  purpose VARCHAR(32) NOT NULL,
+  code VARCHAR(16) NOT NULL,
+  used_at DATETIME NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL
+);
+```
+
+`purpose` 可选值：
+
+- `register`：注册邮箱验证
+- `reset_password`：重置密码验证
+
+验证码规则：
+
+- 验证码 5 分钟有效
+- 同一邮箱 60 秒内只能发送一次
+- 同一邮箱 1 小时最多发送 5 次
+- 同一邮箱同一用途重新发送验证码后，旧验证码失效
+
+### 6.3 rooms
+
+```sql
+CREATE TABLE rooms (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(80) NOT NULL,
+  owner_id BIGINT UNSIGNED NOT NULL,
+  max_members TINYINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+);
+```
+
+`max_members` 只能是：
+
+- `2`
+- `8`
+
+### 6.4 room_members
+
+```sql
+CREATE TABLE room_members (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  room_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  is_owner TINYINT(1) NOT NULL DEFAULT 0,
+  mic_status VARCHAR(16) NOT NULL DEFAULT 'off',
+  joined_at DATETIME NOT NULL,
+  UNIQUE KEY uk_room_members_user (user_id)
+);
+```
+
+`uk_room_members_user` 用于保证一个用户同一时间只能在一个房间。
+
+`mic_status` 可选值：
+
+- `off`：未开麦
+- `on`：已开麦
+
+### 6.5 messages
+
+```sql
+CREATE TABLE messages (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  room_id BIGINT UNSIGNED NOT NULL,
+  sender_id BIGINT UNSIGNED NOT NULL,
+  type VARCHAR(16) NOT NULL DEFAULT 'text',
+  content TEXT NOT NULL,
+  created_at DATETIME NOT NULL
+);
+```
+
+`type` 第一版只使用：
+
+- `text`：文本消息
+- `system`：系统消息
+
+## 7. HTTP API
+
+统一前缀：
+
+```txt
+/api/v1
+```
+
+### 7.1 健康检查
+
+```txt
+GET /health
+```
+
+### 7.2 发送注册邮箱验证码
+
+```txt
+POST /api/v1/auth/register-code
+```
+
+请求：
+
+```json
+{
+  "email": "alex@example.com"
+}
+```
+
+后端生成验证码，并通过 QQ 邮箱 SMTP 发送到用户邮箱。
+
+注册前必须先完成邮箱验证码校验。
+
+验证码用途为 `register`。
+
+### 7.3 注册
+
+```txt
+POST /api/v1/auth/register
+```
+
+请求：
+
+```json
+{
+  "username": "alex_001",
+  "email": "alex@example.com",
+  "email_code": "123456",
+  "password": "123456",
+  "nickname": "Alex",
+  "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
+}
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "token": "jwt_token",
+    "user": {
+      "id": 1,
+      "username": "alex_001",
+      "email": "alex@example.com",
+      "nickname": "Alex",
+      "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
+    }
+  }
+}
+```
+
+### 7.4 登录
+
+```txt
+POST /api/v1/auth/login
+```
+
+请求：
+
+```json
+{
+  "username": "alex_001",
+  "password": "123456"
+}
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {
+    "token": "jwt_token",
+    "user": {
+      "id": 1,
+      "username": "alex_001",
+      "email": "alex@example.com",
+      "nickname": "Alex",
+      "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
+    }
+  }
+}
+```
+
+### 7.5 当前用户信息
+
+```txt
+GET /api/v1/users/me
+```
+
+### 7.6 发送重置密码验证码
+
+```txt
+POST /api/v1/auth/password-reset-code
+```
+
+请求：
+
+```json
+{
+  "email": "alex@example.com"
+}
+```
+
+后端生成验证码，并通过 QQ 邮箱 SMTP 发送到用户邮箱。
+
+验证码用途为 `reset_password`。
+
+### 7.7 重置密码
+
+```txt
+POST /api/v1/auth/reset-password
+```
+
+请求：
+
+```json
+{
+  "email": "alex@example.com",
+  "code": "123456",
+  "new_password": "new123456"
+}
+```
+
+验证码校验通过后，后端更新用户密码。
+
+新密码使用 `bcrypt` 生成哈希后保存。
+
+### 7.8 更新当前用户信息
+
+```txt
+PATCH /api/v1/users/me
+```
+
+请求：
+
+```json
+{
+  "nickname": "Alex",
+  "avatar_url": ""
+}
+```
+
+修改昵称时，昵称也不可与其他用户重复。
+
+### 7.9 注册前上传头像
+
+```txt
+POST /api/v1/uploads/avatar
+```
+
+请求：
+
+```txt
+multipart/form-data
+file: 头像文件
+```
+
+后端上传文件到腾讯云 COS，并返回 `avatar_url`。
+
+这个接口用于注册前上传头像，不需要 JWT。
+
+### 7.10 更新当前用户头像
+
+```txt
+POST /api/v1/users/me/avatar
+```
+
+请求：
+
+```txt
+multipart/form-data
+file: 头像文件
+```
+
+后端上传文件到腾讯云 COS，并更新当前用户的 `avatar_url`。
+
+头像文件限制：
+
+- 只允许 jpg、jpeg、png、webp
+- 最大 2MB
+- COS 路径：`avatars/{user_id}/{timestamp}.{ext}`
+- 公开读
+
+### 7.11 创建房间
+
+```txt
+POST /api/v1/rooms
+```
+
+请求：
+
+```json
+{
+  "max_members": 8
+}
+```
+
+`max_members` 只能传 `2` 或 `8`。
+
+房间名称由后端根据当前用户昵称自动生成。
+
+### 7.12 房间列表
+
+```txt
+GET /api/v1/rooms?page=1&page_size=20
+```
+
+返回字段：
+
+- 房间名称
+- 当前人数
+- 最大人数
+
+排序规则：
+
+- 按 `created_at` 倒序
+- 默认 `page = 1`
+- 默认 `page_size = 20`
+- 最大 `page_size = 50`
+
+### 7.13 房间详情
+
+```txt
+GET /api/v1/rooms/:room_id
+```
+
+返回房间信息和当前成员列表。
+
+### 7.14 进入房间
+
+```txt
+POST /api/v1/rooms/:room_id/join
+```
+
+用户进入房间后，后端创建房间成员记录。
+
+如果房间当前人数已达到最大人数，不能进入。
+
+如果用户已经在其他房间，不能进入新房间。
+
+进入房间必须在数据库事务中完成：
+
+1. 检查用户是否已经在房间中
+2. 检查目标房间是否存在
+3. 检查当前人数是否达到上限
+4. 创建房间成员记录
+
+这样可以避免并发进入导致房间超员。
+
+### 7.15 离开房间
+
+```txt
+POST /api/v1/rooms/:room_id/leave
+```
+
+用户离开房间后，后端删除该用户的房间成员记录。
+
+如果房间内还有其他成员，并且离开者是房主，后端自动转让房主。
+
+如果房间内没有其他成员，后端删除房间、房间成员和房间消息。
+
+离开房间接口需要幂等：
+
+- 用户不在房间时调用，也返回成功
+
+### 7.16 获取历史消息
+
+```txt
+GET /api/v1/rooms/:room_id/messages?limit=20&before_id=100
+```
+
+排序规则：
+
+- 查询时按 `id` 倒序分页
+- 返回给前端时按 `id` 正序展示
+
+### 7.17 发送文字消息
+
+```txt
+POST /api/v1/rooms/:room_id/messages
+```
+
+请求：
+
+```json
+{
+  "content": "hello"
+}
+```
+
+文字消息最多 50 字。
+
+后端会先 trim 消息内容，trim 后为空则拒绝发送。
+
+发送成功后，后端写入数据库并广播 `message.created` 事件。
+
+第一版消息通过 HTTP 接口发送，WebSocket 只负责接收广播。
+
+### 7.18 更新麦克风状态
+
+```txt
+PATCH /api/v1/rooms/:room_id/mic
+```
+
+请求：
+
+```json
+{
+  "mic_status": "on"
+}
+```
+
+`mic_status` 只能是：
+
+- `on`
+- `off`
+
+更新成功后，后端广播 `member.mic_updated` 事件。
+
+## 8. WebSocket API
+
+连接地址：
+
+```txt
+GET /ws/v1/rooms/:room_id?token=jwt_token
+```
+
+连接成功后，后端把当前用户加入房间连接池。
+
+### 8.1 服务端事件格式
+
+```json
+{
+  "type": "event.name",
+  "room_id": 1,
+  "data": {}
+}
+```
+
+### 8.2 成员加入
+
+```json
+{
+  "type": "member.joined",
+  "room_id": 1,
+  "data": {
+    "user_id": 1,
+    "nickname": "Alex",
+    "avatar_url": ""
+  }
+}
+```
+
+### 8.3 成员离开
+
+```json
+{
+  "type": "member.left",
+  "room_id": 1,
+  "data": {
+    "user_id": 1
+  }
+}
+```
+
+### 8.4 房主变更
+
+```json
+{
+  "type": "room.owner_changed",
+  "room_id": 1,
+  "data": {
+    "owner_id": 2
+  }
+}
+```
+
+### 8.5 消息创建
+
+```json
+{
+  "type": "message.created",
+  "room_id": 1,
+  "data": {
+    "id": 10,
+    "sender_id": 1,
+    "content": "hello",
+    "created_at": "2026-06-16T16:00:00+08:00"
+  }
+}
+```
+
+### 8.6 麦克风状态更新
+
+```json
+{
+  "type": "member.mic_updated",
+  "room_id": 1,
+  "data": {
+    "user_id": 1,
+    "mic_status": "on"
+  }
+}
+```
+
+## 9. 统一响应格式
+
+成功：
+
+```json
+{
+  "code": 200,
+  "message": "ok",
+  "data": {}
+}
+```
+
+失败：
+
+```json
+{
+  "code": 500,
+  "message": "error message",
+  "data": null
+}
+```
+
+第一版只使用三类业务响应码：
+
+- `200`：成功
+- `401`：鉴权失败
+- `500`：错误
+
+## 10. 鉴权规则
+
+除发送注册邮箱验证码、注册前上传头像、注册、登录、发送重置密码验证码、重置密码外，所有 HTTP API 都需要 JWT。
+
+JWT 放在请求头：
+
+```txt
+Authorization: Bearer jwt_token
+```
+
+WebSocket 连接时通过 query 传 token：
+
+```txt
+/ws/v1/rooms/1?token=jwt_token
+```
+
+WebSocket 鉴权失败时，不升级连接，直接返回 `401`。
+
+WebSocket 心跳：
+
+- 心跳间隔 30 秒
+- 超时时间 60 秒
+- 超时断开后执行离开房间流程
+
+失败处理：
+
+- 云数据库连接失败：服务启动失败并退出
+- AutoMigrate 失败：服务启动失败并退出
+- 邮箱发送失败：接口返回 `500`
+- COS 上传失败：接口返回 `500`
+
+## 11. 环境变量
+
+```txt
+APP_PORT=8080
+JWT_SECRET=change_me
+MYSQL_DSN=room:password@tcp(127.0.0.1:3306)/room?charset=utf8mb4&parseTime=True&loc=Local
+CORS_ALLOW_ORIGINS=*
+
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_USERNAME=your_qq_number@qq.com
+SMTP_PASSWORD=your_qq_email_authorization_code
+SMTP_FROM=your_qq_number@qq.com
+
+COS_SECRET_ID=your_tencent_cloud_secret_id
+COS_SECRET_KEY=your_tencent_cloud_secret_key
+COS_REGION=ap-guangzhou
+COS_BUCKET=your_bucket_name
+COS_BASE_URL=https://your_bucket.cos.ap-guangzhou.myqcloud.com
+```
+
+QQ 邮箱 SMTP 使用授权码，不使用 QQ 登录密码。
+
+## 12. 第一版开发顺序
+
+1. 初始化 Go 项目
+2. 搭建 Gin 服务
+3. 接入 `.env` 配置
+4. 接入 MySQL 和 GORM
+5. 实现 GORM AutoMigrate 自动建表
+6. 实现统一响应
+7. 实现 CORS
+8. 实现健康检查 `/health`
+9. 实现 QQ 邮箱 SMTP 发信
+10. 实现注册前头像上传
+11. 实现发送注册邮箱验证码、注册、登录和 JWT
+12. 实现发送重置密码验证码和重置密码
+13. 实现当前用户头像更新
+14. 实现当前用户信息读取和更新
+15. 实现房间创建、列表、详情
+16. 实现进入房间、离开房间、房主自动转让
+17. 实现文字消息保存和历史消息查询
+18. 实现 WebSocket 房间连接池
+19. 实现 WebSocket 断开自动离开房间
+20. 实现成员加入、离开广播
+21. 实现文字消息广播
+22. 实现开麦、闭麦状态更新和广播
+23. 补充 README 和接口调用示例
+
+## 13. 第一版验收标准
+
+第一版完成时，需要满足：
+
+- 可以启动 `room-api`
+- `/health` 可以返回服务正常
+- 可以发送注册邮箱验证码
+- 可以注册前上传头像
+- 可以注册账号
+- 可以登录并拿到 token
+- 可以通过邮箱验证码重置密码
+- 可以上传头像到腾讯云 COS
+- 可以创建房间
+- 房间名称自动显示为用户昵称加“的房间”
+- 可以查看房间列表
+- 可以进入房间
+- 一个用户同一时间只能在一个房间
+- 两个用户进入同一房间后可以通过 WebSocket 收到成员变化
+- 一个用户发送文字消息，另一个用户可以实时收到
+- 刷新后可以看到历史消息
+- 用户开麦、闭麦后，房间内其他用户可以收到状态变化
+- 房主离开房间后，房间内其他成员可以自动成为新房主
+- WebSocket 断开后，用户自动离开房间
+- 最后一个成员离开房间后，房间和房间消息会被删除
