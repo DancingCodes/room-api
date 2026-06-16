@@ -560,7 +560,7 @@ PATCH /api/v1/users/me
 ```json
 {
   "nickname": "Alex",
-  "avatar_url": ""
+  "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
 }
 ```
 
@@ -770,7 +770,7 @@ GET /ws/v1/rooms/:room_id?token=jwt_token
   "data": {
     "user_id": 1,
     "nickname": "Alex",
-    "avatar_url": ""
+    "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
   }
 }
 ```
