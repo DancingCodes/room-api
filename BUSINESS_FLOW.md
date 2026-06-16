@@ -284,7 +284,54 @@ flowchart TD
   F --> G[返回用户信息]
 ```
 
-## 7. 上传头像
+## 7. 注册前上传头像
+
+触发：
+
+用户在注册页选择头像文件并上传。
+
+前置条件：
+
+- 文件是允许的图片类型
+- 文件大小不超过后端限制
+
+头像限制：
+
+- 格式：jpg、jpeg、png、webp
+- 大小：最大 2MB
+- COS 路径：`avatars/{user_id}/{timestamp}.{ext}`
+- 第一版公开读
+
+后端逻辑：
+
+1. 校验上传文件
+2. 生成 COS 对象路径
+3. 上传图片到腾讯云 COS
+4. 获取图片访问 URL
+5. 返回 `avatar_url`
+
+失败处理：
+
+- COS 上传失败时，接口返回 `500`
+
+数据变化：
+
+- 无
+
+返回结果：
+
+- `avatar_url`
+
+```mermaid
+flowchart TD
+  A[上传头像] --> B{文件是否合法}
+  B -->|否| C[返回错误]
+  B -->|是| D[上传到腾讯云 COS]
+  D --> E[更新用户头像 URL]
+  E --> F[返回 avatar_url]
+```
+
+## 8. 更新当前用户头像
 
 触发：
 
@@ -313,10 +360,6 @@ flowchart TD
 6. 更新 `users.avatar_url`
 7. 返回最新用户信息
 
-失败处理：
-
-- COS 上传失败时，接口返回 `500`
-
 数据变化：
 
 - 更新 `users.avatar_url`
@@ -325,16 +368,11 @@ flowchart TD
 
 - 用户信息
 
-```mermaid
-flowchart TD
-  A[上传头像] --> B{文件是否合法}
-  B -->|否| C[返回错误]
-  B -->|是| D[上传到腾讯云 COS]
-  D --> E[更新用户头像 URL]
-  E --> F[返回用户信息]
-```
+失败处理：
 
-## 8. 创建房间
+- COS 上传失败时，接口返回 `500`
+
+## 9. 创建房间
 
 触发：
 
@@ -390,7 +428,7 @@ flowchart TD
   I --> J[返回房间信息]
 ```
 
-## 9. 进入房间
+## 10. 进入房间
 
 触发：
 
@@ -441,7 +479,7 @@ flowchart TD
   I --> J[返回房间信息和成员列表]
 ```
 
-## 10. 离开房间
+## 11. 离开房间
 
 触发：
 
@@ -498,7 +536,7 @@ flowchart TD
   F --> K[结束]
 ```
 
-## 11. 房主自动转让
+## 12. 房主自动转让
 
 触发：
 
@@ -530,7 +568,7 @@ flowchart TD
   D -->|等于 0| I[删除房间和房间消息]
 ```
 
-## 12. 发送文字消息
+## 13. 发送文字消息
 
 触发：
 
@@ -581,7 +619,7 @@ flowchart TD
   H --> I[返回消息信息]
 ```
 
-## 13. 获取历史消息
+## 14. 获取历史消息
 
 触发：
 
@@ -615,7 +653,7 @@ WebSocket 广播：
 - 查询时按 `id` 倒序分页
 - 返回给前端时按 `id` 正序展示
 
-## 14. 开麦和闭麦
+## 15. 开麦和闭麦
 
 触发：
 
@@ -655,7 +693,7 @@ flowchart TD
   G --> H[返回最新状态]
 ```
 
-## 15. WebSocket 连接
+## 16. WebSocket 连接
 
 触发：
 
@@ -717,9 +755,9 @@ flowchart TD
   I --> J[执行离开房间流程]
 ```
 
-## 16. WebSocket 事件列表
+## 17. WebSocket 事件列表
 
-### 16.1 member.joined
+### 17.1 member.joined
 
 用户进入房间时广播。
 
@@ -730,12 +768,12 @@ flowchart TD
   "data": {
     "user_id": 1,
     "nickname": "Alex",
-    "avatar_url": ""
+    "avatar_url": "https://your_bucket.cos.ap-guangzhou.myqcloud.com/avatars/1/1718524800.png"
   }
 }
 ```
 
-### 16.2 member.left
+### 17.2 member.left
 
 用户离开房间时广播。
 
@@ -749,7 +787,7 @@ flowchart TD
 }
 ```
 
-### 16.3 room.owner_changed
+### 17.3 room.owner_changed
 
 房主变更时广播。
 
@@ -763,7 +801,7 @@ flowchart TD
 }
 ```
 
-### 16.4 message.created
+### 17.4 message.created
 
 用户发送文字消息时广播。
 
@@ -780,7 +818,7 @@ flowchart TD
 }
 ```
 
-### 16.5 member.mic_updated
+### 17.5 member.mic_updated
 
 用户开麦或闭麦时广播。
 
