@@ -45,7 +45,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/auth/register",
 			body:        "{",
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 		{
 			name:        "register requires email code",
@@ -53,7 +53,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/auth/register",
 			body:        `{"username":"alex_001","email":"alex@example.com","password":"123456","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
 			wantCode:    500,
-			wantMessage: "invalid email code",
+			wantMessage: "验证码错误",
 		},
 		{
 			name:        "login rejects invalid json",
@@ -61,7 +61,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/auth/login",
 			body:        "{",
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 		{
 			name:        "reset password rejects invalid json",
@@ -69,7 +69,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/auth/reset-password",
 			body:        "{",
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 	}
 
@@ -108,7 +108,7 @@ func TestProtectedAPIsRequireAuthorization(t *testing.T) {
 			}
 
 			response := performJSONRequest(router, http.MethodGet, "/api/v1/users/me", "", headers)
-			assertAPIResponse(t, response, 401, "unauthorized")
+			assertAPIResponse(t, response, 401, "未登录")
 		})
 	}
 }
@@ -139,7 +139,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/rooms",
 			body:        "{",
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 		{
 			name:        "message rejects invalid room id",
@@ -147,7 +147,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/rooms/not-number/messages",
 			body:        `{"content":"hello"}`,
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 		{
 			name:        "message rejects invalid json",
@@ -155,7 +155,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 			path:        "/api/v1/rooms/1/messages",
 			body:        "{",
 			wantCode:    500,
-			wantMessage: "invalid params",
+			wantMessage: "参数错误",
 		},
 	}
 
