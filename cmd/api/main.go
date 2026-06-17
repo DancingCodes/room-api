@@ -13,14 +13,14 @@ func main() {
 
 	db, err := database.Open(cfg)
 	if err != nil {
-		log.Fatalf("connect database: %v", err)
+		log.Fatalf("连接数据库失败: %v", err)
 	}
 
 	r, err := router.New(cfg, db)
 	if err != nil {
-		log.Fatalf("create router: %v", err)
+		log.Fatalf("创建路由失败: %v", err)
 	}
 	if err := r.Run(":9999"); err != nil {
-		log.Fatalf("run server: %v", err)
+		log.Fatalf("启动服务失败: %v", err)
 	}
 }

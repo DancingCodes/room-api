@@ -68,7 +68,7 @@ func (s *UploadService) UploadAvatar(fileHeader *multipart.FileHeader) (string, 
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	header := make([]byte, 512)
 	n, err := file.Read(header)

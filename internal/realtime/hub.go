@@ -67,7 +67,7 @@ func (h *Hub) Broadcast(roomID uint64, event Event) {
 
 	for _, client := range clients {
 		if err := client.Conn.WriteMessage(websocket.TextMessage, payload); err != nil {
-			client.Conn.Close()
+			_ = client.Conn.Close()
 			h.Remove(client)
 		}
 	}

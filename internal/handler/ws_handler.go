@@ -66,10 +66,11 @@ func (h *WSHandler) run(client *realtime.Client) {
 	done := make(chan struct{})
 
 	client.Conn.SetReadLimit(512)
-	client.Conn.SetReadDeadline(time.Now().Add(pongWait))
+	if err := client.Conn.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		return
+	}
 	client.Conn.SetPongHandler(func(string) error {
-		client.Conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
+		return client.Conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 
 	go func() {
@@ -83,7 +84,7 @@ func (h *WSHandler) run(client *realtime.Client) {
 
 	ticker := time.NewTicker(pingPeriod)
 	defer ticker.Stop()
-	defer client.Conn.Close()
+	defer func() { _ = client.Conn.Close() }()
 	defer h.hub.Remove(client)
 	defer h.leaveAfterDisconnect(client)
 
@@ -92,7 +93,9 @@ func (h *WSHandler) run(client *realtime.Client) {
 		case <-done:
 			return
 		case <-ticker.C:
-			client.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err := client.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
 			if err := client.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
