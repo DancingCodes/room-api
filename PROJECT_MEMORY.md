@@ -17,6 +17,7 @@
 - Avatar upload: Tencent COS.
 - Email: Tencent SES template sending with `TemplateData` containing `code`.
 - Rooms: list, create, detail, join, leave, owner transfer, mic status.
+- Room owner source of truth is `rooms.owner_id`; member response `is_owner` is computed from `member.user_id == room.owner_id`, not stored in `room_members`.
 - Messages: text message create/list.
 - WebSocket: `/api/v1/ws/rooms/:room_id` using `Authorization: Bearer jwt_token`.
 - WebSocket disconnect means leaving the room.

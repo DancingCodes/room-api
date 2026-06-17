@@ -38,7 +38,6 @@ CREATE TABLE room_members (
   id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   room_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
-  is_owner TINYINT(1) NOT NULL DEFAULT 0,
   mic_status VARCHAR(16) NOT NULL DEFAULT 'off',
   joined_at DATETIME NOT NULL,
   UNIQUE KEY uk_room_members_user (user_id),

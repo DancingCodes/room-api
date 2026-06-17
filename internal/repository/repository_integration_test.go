@@ -34,7 +34,7 @@ func TestRoomRepositoryIntegration(t *testing.T) {
 	if room.ID == 0 || room.OwnerID != owner.ID || room.MaxMembers != 2 {
 		t.Fatalf("Create() room = %+v", room)
 	}
-	if len(members) != 1 || members[0].UserID != owner.ID || !members[0].IsOwner || members[0].JoinedAt.IsZero() {
+	if len(members) != 1 || members[0].UserID != owner.ID || members[0].JoinedAt.IsZero() {
 		t.Fatalf("Create() members = %+v", members)
 	}
 
@@ -96,7 +96,7 @@ func TestRoomRepositoryIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Detail() error = %v", err)
 	}
-	if detailRoom.OwnerID != guest.ID || len(detailMembers) != 1 || !detailMembers[0].IsOwner {
+	if detailRoom.OwnerID != guest.ID || len(detailMembers) != 1 || detailMembers[0].UserID != guest.ID {
 		t.Fatalf("Detail() room = %+v members = %+v", detailRoom, detailMembers)
 	}
 

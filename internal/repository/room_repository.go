@@ -15,7 +15,7 @@ type RoomRepository struct {
 }
 
 type RoomWithMemberCount struct {
-	Room          model.Room
+	Room         model.Room
 	CurrentCount int64
 }
 
@@ -94,7 +94,6 @@ func (r *RoomRepository) Create(owner *model.User, maxMembers uint8) (*model.Roo
 		member := model.RoomMember{
 			RoomID:    room.ID,
 			UserID:    owner.ID,
-			IsOwner:   true,
 			MicStatus: "off",
 			JoinedAt:  now,
 		}
@@ -154,7 +153,6 @@ func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomM
 		member := model.RoomMember{
 			RoomID:    roomID,
 			UserID:    userID,
-			IsOwner:   false,
 			MicStatus: "off",
 			JoinedAt:  time.Now(),
 		}
@@ -177,6 +175,7 @@ type LeaveResult struct {
 	OwnerChanged      bool
 	OldOwnerUserID    uint64
 	NewOwnerUserID    uint64
+	OwnerUserID       uint64
 	CurrentMemberSize int64
 	RemainingMembers  []model.RoomMember
 }
@@ -194,6 +193,12 @@ func (r *RoomRepository) Leave(roomID, userID uint64) (*LeaveResult, error) {
 		}
 		result.Left = true
 		result.OldOwnerUserID = member.UserID
+
+		var room model.Room
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&room, "id = ?", roomID).Error; err != nil {
+			return err
+		}
+		result.OwnerUserID = room.OwnerID
 
 		if err := tx.Delete(&model.RoomMember{}, "id = ?", member.ID).Error; err != nil {
 			return err
@@ -217,17 +222,14 @@ func (r *RoomRepository) Leave(roomID, userID uint64) (*LeaveResult, error) {
 			return nil
 		}
 
-		if member.IsOwner {
+		if member.UserID == room.OwnerID {
 			newOwner := remaining[0]
 			result.OwnerChanged = true
 			result.NewOwnerUserID = newOwner.UserID
+			result.OwnerUserID = newOwner.UserID
 			if err := tx.Model(&model.Room{}).Where("id = ?", roomID).Update("owner_id", newOwner.UserID).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&model.RoomMember{}).Where("room_id = ?", roomID).Update("is_owner", false).Error; err != nil {
-				return err
-			}
-			return tx.Model(&model.RoomMember{}).Where("id = ?", newOwner.ID).Update("is_owner", true).Error
 		}
 
 		return nil

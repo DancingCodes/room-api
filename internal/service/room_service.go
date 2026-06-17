@@ -56,6 +56,7 @@ type LeaveResultDTO struct {
 	DeletedRoom       bool
 	OwnerChanged      bool
 	NewOwnerUserID    uint64
+	OwnerUserID       uint64
 	CurrentMemberSize int64
 	RemainingMembers  []RoomMemberDTO
 }
@@ -135,7 +136,7 @@ func (s *RoomService) Leave(userID, roomID uint64) (*LeaveResultDTO, error) {
 		return nil, err
 	}
 
-	memberDTOs, err := s.memberDTOs(result.RemainingMembers)
+	memberDTOs, err := s.memberDTOs(result.RemainingMembers, result.OwnerUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -145,6 +146,7 @@ func (s *RoomService) Leave(userID, roomID uint64) (*LeaveResultDTO, error) {
 		DeletedRoom:       result.DeletedRoom,
 		OwnerChanged:      result.OwnerChanged,
 		NewOwnerUserID:    result.NewOwnerUserID,
+		OwnerUserID:       result.OwnerUserID,
 		CurrentMemberSize: result.CurrentMemberSize,
 		RemainingMembers:  memberDTOs,
 	}, nil
@@ -160,7 +162,12 @@ func (s *RoomService) UpdateMicStatus(userID, roomID uint64, micStatus string) (
 		return nil, err
 	}
 
-	members, err := s.memberDTOs([]model.RoomMember{*member})
+	room, err := s.rooms.FindRoom(roomID)
+	if err != nil {
+		return nil, err
+	}
+
+	members, err := s.memberDTOs([]model.RoomMember{*member}, room.OwnerID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +175,7 @@ func (s *RoomService) UpdateMicStatus(userID, roomID uint64, micStatus string) (
 }
 
 func (s *RoomService) detailDTO(room *model.Room, members []model.RoomMember) (*RoomDetailDTO, error) {
-	memberDTOs, err := s.memberDTOs(members)
+	memberDTOs, err := s.memberDTOs(members, room.OwnerID)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +197,7 @@ func roomDTO(room *model.Room, currentMembers int64) RoomDTO {
 	}
 }
 
-func (s *RoomService) memberDTOs(members []model.RoomMember) ([]RoomMemberDTO, error) {
+func (s *RoomService) memberDTOs(members []model.RoomMember, ownerID uint64) ([]RoomMemberDTO, error) {
 	userIDs := make([]uint64, 0, len(members))
 	seen := make(map[uint64]struct{}, len(members))
 	for _, member := range members {
@@ -216,7 +223,7 @@ func (s *RoomService) memberDTOs(members []model.RoomMember) ([]RoomMemberDTO, e
 			UserID:    member.UserID,
 			Nickname:  user.Nickname,
 			AvatarURL: user.AvatarURL,
-			IsOwner:   member.IsOwner,
+			IsOwner:   member.UserID == ownerID,
 			MicStatus: member.MicStatus,
 			JoinedAt:  formatTime(member.JoinedAt),
 		})
