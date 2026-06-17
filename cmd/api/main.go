@@ -16,8 +16,8 @@ func main() {
 		log.Fatalf("connect database: %v", err)
 	}
 
-	r := router.New(db)
-	if err := r.Run(":8080"); err != nil {
+	r := router.New(cfg, db)
+	if err := r.Run(":9999"); err != nil {
 		log.Fatalf("run server: %v", err)
 	}
 }

@@ -15,9 +15,9 @@ type Config struct {
 	TencentSESRegion     string
 	TencentSESFrom       string
 	TencentSESTemplateID string
-	COSRegion            string
-	COSBucket            string
 	COSBaseURL           string
+	COSPathPrefix        string
+	COSCDNURL            string
 }
 
 func Load() Config {
@@ -33,9 +33,9 @@ func Load() Config {
 		TencentSESRegion:     getEnv("TENCENT_SES_REGION"),
 		TencentSESFrom:       getEnv("TENCENT_SES_FROM"),
 		TencentSESTemplateID: getEnv("TENCENT_SES_TEMPLATE_ID"),
-		COSRegion:            getEnv("COS_REGION"),
-		COSBucket:            getEnv("COS_BUCKET"),
 		COSBaseURL:           getEnv("COS_BASE_URL"),
+		COSPathPrefix:        getEnv("COS_PATH_PREFIX"),
+		COSCDNURL:            getEnv("COS_CDN_URL"),
 	}
 }
 

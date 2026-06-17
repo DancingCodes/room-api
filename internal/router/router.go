@@ -4,18 +4,43 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"room-api/internal/auth"
+	"room-api/internal/config"
+	"room-api/internal/handler"
+	"room-api/internal/middleware"
+	"room-api/internal/repository"
 	"room-api/internal/response"
+	"room-api/internal/service"
 )
 
-func New(db *gorm.DB) *gin.Engine {
+func New(cfg config.Config, db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 	r.Use(corsAll())
+
+	jwtSvc := auth.NewService(cfg.JWTSecret)
+	userRepo := repository.NewUserRepository(db)
+	userSvc := service.NewUserService(userRepo, jwtSvc)
+	userHandler := handler.NewUserHandler(userSvc)
 
 	r.GET("/health", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "up"})
 	})
 
-	_ = db
+	api := r.Group("/api/v1")
+	{
+		authRoutes := api.Group("/auth")
+		{
+			authRoutes.POST("/register", userHandler.Register)
+			authRoutes.POST("/login", userHandler.Login)
+		}
+
+		users := api.Group("/users", middleware.Auth(jwtSvc))
+		{
+			users.GET("/me", userHandler.Me)
+			users.PATCH("/me", userHandler.UpdateMe)
+		}
+	}
+
 	return r
 }
 
