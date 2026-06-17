@@ -4,10 +4,11 @@
 
 - Backend first version is implemented and usable for Android integration.
 - Server listens on fixed port `9999`.
-- HTTP responses always use status `200` with body shape: `code`, `message`, `data`.
+- HTTP responses always use status `200` with body shape: `code`, `message`, `data`; success message is `成功`, common validation failure message is `参数错误`, auth failure message is `未登录`.
 - CORS accepts all origins.
 - Database schema is managed manually with `migrations/001_init_schema.sql`; do not use AutoMigrate.
 - `.env` is local only and must not be committed or printed.
+- `.idea/` is ignored and should not be committed.
 
 ## Implemented Features
 
@@ -19,6 +20,7 @@
 - Messages: text message create/list.
 - WebSocket: `/api/v1/ws/rooms/:room_id` using `Authorization: Bearer jwt_token`.
 - WebSocket disconnect means leaving the room.
+- `member.joined` is broadcast after `POST /api/v1/rooms/:room_id/join` succeeds, not when fetching room detail.
 
 ## Important Decisions
 
@@ -58,6 +60,12 @@
 go test ./...
 ```
 
+On this machine, Go is installed at:
+
+```powershell
+D:\DancingCodes\goSdk\go1.26.0\bin\go.exe test ./...
+```
+
 ```powershell
 .\scripts\api-smoke.ps1 -Username "roomqq01" -Password "123456"
 ```
@@ -73,6 +81,7 @@ go test ./...
 ## Verified
 
 - `go test ./...` passes.
+- `go vet ./...` passes.
 - Real email registration through Tencent SES succeeded for QQ email, though QQ may place mail in spam.
 - API smoke passed.
 - WebSocket smoke passed.
