@@ -37,13 +37,13 @@ var upgrader = websocket.Upgrader{
 func (h *WSHandler) ConnectRoom(c *gin.Context) {
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
 	claims, ok := h.parseClaims(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 

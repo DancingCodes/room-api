@@ -38,8 +38,8 @@ func TestRoomRepositoryIntegration(t *testing.T) {
 		t.Fatalf("Create() members = %+v", members)
 	}
 
-	if _, _, err := rooms.Create(owner, 2); err == nil || !strings.Contains(err.Error(), "user already in room") {
-		t.Fatalf("Create() duplicate owner error = %v, want user already in room", err)
+	if _, _, err := rooms.Create(owner, 2); err == nil || !strings.Contains(err.Error(), "用户已在房间内") {
+		t.Fatalf("Create() duplicate owner error = %v, want 用户已在房间内", err)
 	}
 
 	joinedRoom, joinedMembers, err := rooms.Join(room.ID, guest.ID)
