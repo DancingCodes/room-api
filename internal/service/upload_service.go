@@ -28,7 +28,7 @@ type UploadService struct {
 
 func NewUploadService(cfg config.Config) (*UploadService, error) {
 	if cfg.TencentSecretID == "" || cfg.TencentSecretKey == "" || cfg.COSBaseURL == "" {
-		return nil, errors.New("cos config is required")
+		return nil, errors.New("COS配置不能为空")
 	}
 
 	bucketURL, err := url.Parse(strings.TrimRight(cfg.COSBaseURL, "/"))
@@ -58,10 +58,10 @@ func NewUploadService(cfg config.Config) (*UploadService, error) {
 
 func (s *UploadService) UploadAvatar(fileHeader *multipart.FileHeader) (string, error) {
 	if fileHeader == nil {
-		return "", errors.New("invalid params")
+		return "", errors.New("参数错误")
 	}
 	if fileHeader.Size <= 0 || fileHeader.Size > maxAvatarSize {
-		return "", errors.New("file too large")
+		return "", errors.New("文件过大")
 	}
 
 	file, err := fileHeader.Open()
@@ -78,7 +78,7 @@ func (s *UploadService) UploadAvatar(fileHeader *multipart.FileHeader) (string, 
 
 	contentType, ext, ok := detectImageType(header[:n])
 	if !ok {
-		return "", errors.New("invalid file type")
+		return "", errors.New("文件类型错误")
 	}
 
 	if seeker, ok := file.(io.Seeker); ok {
@@ -86,7 +86,7 @@ func (s *UploadService) UploadAvatar(fileHeader *multipart.FileHeader) (string, 
 			return "", err
 		}
 	} else {
-		return "", errors.New("invalid file")
+		return "", errors.New("文件错误")
 	}
 
 	objectKey, err := s.avatarObjectKey(ext)

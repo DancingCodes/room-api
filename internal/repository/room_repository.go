@@ -43,7 +43,7 @@ func (r *RoomRepository) Create(owner *model.User, maxMembers uint8) (*model.Roo
 			return err
 		}
 		if count > 0 {
-			return errors.New("user already in room")
+			return errors.New("用户已在房间内")
 		}
 
 		room = model.Room{
@@ -99,12 +99,12 @@ func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomM
 			return err
 		}
 		if count > 0 {
-			return errors.New("user already in room")
+			return errors.New("用户已在房间内")
 		}
 
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&room, "id = ?", roomID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("room not found")
+				return errors.New("房间不存在")
 			}
 			return err
 		}
@@ -113,7 +113,7 @@ func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomM
 			return err
 		}
 		if count >= int64(room.MaxMembers) {
-			return errors.New("room is full")
+			return errors.New("房间已满")
 		}
 
 		member := model.RoomMember{
@@ -208,7 +208,7 @@ func (r *RoomRepository) UpdateMicStatus(roomID, userID uint64, micStatus string
 	err := r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.First(&member, "room_id = ? AND user_id = ?", roomID, userID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("not room member")
+				return errors.New("不在房间内")
 			}
 			return err
 		}
