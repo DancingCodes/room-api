@@ -50,6 +50,24 @@ func TestRoomRepositoryIntegration(t *testing.T) {
 		t.Fatalf("Join() room = %+v members = %+v", joinedRoom, joinedMembers)
 	}
 
+	list, total, err := rooms.List(1, 20)
+	if err != nil {
+		t.Fatalf("List() error = %v", err)
+	}
+	if total < 1 {
+		t.Fatalf("List() total = %d, want at least 1", total)
+	}
+	var listed *RoomWithMemberCount
+	for i := range list {
+		if list[i].Room.ID == room.ID {
+			listed = &list[i]
+			break
+		}
+	}
+	if listed == nil || listed.CurrentCount != 2 {
+		t.Fatalf("List() room = %+v, want current count 2", listed)
+	}
+
 	isMember, err := rooms.IsMember(room.ID, guest.ID)
 	if err != nil {
 		t.Fatalf("IsMember() error = %v", err)

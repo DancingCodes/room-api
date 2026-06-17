@@ -57,7 +57,7 @@ func (h *WSHandler) ConnectRoom(c *gin.Context) {
 		return
 	}
 
-	client := &realtime.Client{RoomID: roomID, UserID: claims.UserID, Conn: conn}
+	client := realtime.NewClient(roomID, claims.UserID, conn)
 	h.hub.Add(client)
 	h.run(client)
 }
@@ -92,6 +92,16 @@ func (h *WSHandler) run(client *realtime.Client) {
 		select {
 		case <-done:
 			return
+		case payload, ok := <-client.Send:
+			if !ok {
+				return
+			}
+			if err := client.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				return
+			}
+			if err := client.Conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+				return
+			}
 		case <-ticker.C:
 			if err := client.Conn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
 				return

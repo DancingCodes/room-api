@@ -14,21 +14,56 @@ type RoomRepository struct {
 	db *gorm.DB
 }
 
+type RoomWithMemberCount struct {
+	Room          model.Room
+	CurrentCount int64
+}
+
 func NewRoomRepository(db *gorm.DB) *RoomRepository {
 	return &RoomRepository{db: db}
 }
 
-func (r *RoomRepository) List(page, pageSize int) ([]model.Room, int64, error) {
+func (r *RoomRepository) List(page, pageSize int) ([]RoomWithMemberCount, int64, error) {
 	var total int64
 	if err := r.db.Model(&model.Room{}).Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	var rooms []model.Room
+	var rows []struct {
+		ID             uint64
+		Name           string
+		OwnerID        uint64
+		MaxMembers     uint8
+		CreatedAt      time.Time
+		UpdatedAt      time.Time
+		CurrentMembers int64
+	}
+
 	offset := (page - 1) * pageSize
-	err := r.db.Order("created_at DESC").Limit(pageSize).Offset(offset).Find(&rooms).Error
-	if err != nil {
+	if err := r.db.Table("rooms").
+		Select("rooms.id, rooms.name, rooms.owner_id, rooms.max_members, rooms.created_at, rooms.updated_at, COUNT(room_members.id) AS current_members").
+		Joins("LEFT JOIN room_members ON room_members.room_id = rooms.id").
+		Group("rooms.id, rooms.name, rooms.owner_id, rooms.max_members, rooms.created_at, rooms.updated_at").
+		Order("rooms.created_at DESC").
+		Limit(pageSize).
+		Offset(offset).
+		Scan(&rows).Error; err != nil {
 		return nil, 0, err
+	}
+
+	rooms := make([]RoomWithMemberCount, 0, len(rows))
+	for _, row := range rows {
+		rooms = append(rooms, RoomWithMemberCount{
+			Room: model.Room{
+				ID:         row.ID,
+				Name:       row.Name,
+				OwnerID:    row.OwnerID,
+				MaxMembers: row.MaxMembers,
+				CreatedAt:  row.CreatedAt,
+				UpdatedAt:  row.UpdatedAt,
+			},
+			CurrentCount: row.CurrentMembers,
+		})
 	}
 	return rooms, total, nil
 }

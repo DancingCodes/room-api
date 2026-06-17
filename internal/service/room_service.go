@@ -73,12 +73,8 @@ func (s *RoomService) List(page, pageSize int) (*RoomListDTO, error) {
 	}
 
 	list := make([]RoomDTO, 0, len(rooms))
-	for _, room := range rooms {
-		dto, err := s.roomDTO(&room)
-		if err != nil {
-			return nil, err
-		}
-		list = append(list, dto)
+	for _, item := range rooms {
+		list = append(list, roomDTO(&item.Room, item.CurrentCount))
 	}
 
 	return &RoomListDTO{
@@ -172,28 +168,18 @@ func (s *RoomService) UpdateMicStatus(userID, roomID uint64, micStatus string) (
 }
 
 func (s *RoomService) detailDTO(room *model.Room, members []model.RoomMember) (*RoomDetailDTO, error) {
-	roomDTO, err := s.roomDTO(room)
-	if err != nil {
-		return nil, err
-	}
-
 	memberDTOs, err := s.memberDTOs(members)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RoomDetailDTO{
-		Room:    roomDTO,
+		Room:    roomDTO(room, int64(len(members))),
 		Members: memberDTOs,
 	}, nil
 }
 
-func (s *RoomService) roomDTO(room *model.Room) (RoomDTO, error) {
-	currentMembers, err := s.rooms.CountMembers(room.ID)
-	if err != nil {
-		return RoomDTO{}, err
-	}
-
+func roomDTO(room *model.Room, currentMembers int64) RoomDTO {
 	return RoomDTO{
 		ID:             room.ID,
 		Name:           room.Name,
@@ -201,7 +187,7 @@ func (s *RoomService) roomDTO(room *model.Room) (RoomDTO, error) {
 		CurrentMembers: currentMembers,
 		MaxMembers:     room.MaxMembers,
 		CreatedAt:      formatTime(room.CreatedAt),
-	}, nil
+	}
 }
 
 func (s *RoomService) memberDTOs(members []model.RoomMember) ([]RoomMemberDTO, error) {

@@ -17,6 +17,16 @@ type Client struct {
 	RoomID uint64
 	UserID uint64
 	Conn   *websocket.Conn
+	Send   chan []byte
+}
+
+func NewClient(roomID, userID uint64, conn *websocket.Conn) *Client {
+	return &Client{
+		RoomID: roomID,
+		UserID: userID,
+		Conn:   conn,
+		Send:   make(chan []byte, 16),
+	}
 }
 
 type Hub struct {
@@ -66,7 +76,9 @@ func (h *Hub) Broadcast(roomID uint64, event Event) {
 	h.mu.RUnlock()
 
 	for _, client := range clients {
-		if err := client.Conn.WriteMessage(websocket.TextMessage, payload); err != nil {
+		select {
+		case client.Send <- payload:
+		default:
 			_ = client.Conn.Close()
 			h.Remove(client)
 		}

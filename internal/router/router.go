@@ -1,6 +1,8 @@
 package router
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -15,6 +17,10 @@ import (
 )
 
 func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
+	if cfg.JWTSecret == "" {
+		return nil, errors.New("JWT_SECRET不能为空")
+	}
+
 	r := gin.Default()
 	r.Use(corsAll())
 
