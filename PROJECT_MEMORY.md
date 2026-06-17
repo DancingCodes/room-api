@@ -1,0 +1,98 @@
+# Room API Project Memory
+
+## Current Status
+
+- Backend first version is implemented and usable for Android integration.
+- Server listens on fixed port `9999`.
+- HTTP responses always use status `200` with body shape: `code`, `message`, `data`.
+- CORS accepts all origins.
+- Database schema is managed manually with `migrations/001_init_schema.sql`; do not use AutoMigrate.
+- `.env` is local only and must not be committed or printed.
+
+## Implemented Features
+
+- Auth: register, login, email verification code, password reset.
+- User: current profile, nickname update.
+- Avatar upload: Tencent COS.
+- Email: Tencent SES template sending with `TemplateData` containing `code`.
+- Rooms: list, create, detail, join, leave, owner transfer, mic status.
+- Messages: text message create/list.
+- WebSocket: `/api/v1/ws/rooms/:room_id` using `Authorization: Bearer jwt_token`.
+- WebSocket disconnect means leaving the room.
+
+## Important Decisions
+
+- WebSocket auth uses request header, not query string.
+- One user can be in only one room at a time.
+- Room name is `用户昵称 + " 的房间"`.
+- Last member leaving deletes the room and messages.
+- Owner leaving transfers ownership to the earliest joined remaining member.
+- Email verification code TTL is 5 minutes.
+- Email code send limits: 60 seconds cooldown, 5 per hour per email/purpose.
+- Tencent SES and COS share `TENCENT_SECRET_ID` and `TENCENT_SECRET_KEY`.
+- Production DB and test DB are separate. `ROOM_TEST_MYSQL_DSN` points to `room_test`.
+
+## Key Files
+
+- Entry: `cmd/api/main.go`
+- Router: `internal/router/router.go`
+- Handlers: `internal/handler`
+- Services: `internal/service`
+- Repositories: `internal/repository`
+- Models: `internal/model`
+- Realtime hub: `internal/realtime/hub.go`
+- Migration: `migrations/001_init_schema.sql`
+- API docs: `接口文档.md`
+- Backend design: `后端方案.md`
+- Smoke scripts: `scripts`
+
+## Local Test Accounts
+
+- Dev account: `roomdev01` / `123456`
+- Real email test account: `roomqq01` / `123456`
+- Do not run `api-smoke.ps1` and `ws-smoke.ps1` concurrently with the same account, because one user can only be in one room.
+
+## Common Commands
+
+```powershell
+go test ./...
+```
+
+```powershell
+.\scripts\api-smoke.ps1 -Username "roomqq01" -Password "123456"
+```
+
+```powershell
+.\scripts\ws-smoke.ps1 -Username "roomqq01" -Password "123456"
+```
+
+```powershell
+.\scripts\email-smoke.ps1 -Username "newuser01" -Email "your@email.com"
+```
+
+## Verified
+
+- `go test ./...` passes.
+- Real email registration through Tencent SES succeeded for QQ email, though QQ may place mail in spam.
+- API smoke passed.
+- WebSocket smoke passed.
+- Repository integration tests run against `room_test` and clean up test data automatically.
+
+## Next Step
+
+Start Android client development in a separate project, likely:
+
+```txt
+D:\DancingCodes\Codes\dancingcodes\room-android
+```
+
+Recommended Android stack:
+
+- Kotlin
+- Jetpack Compose
+- ViewModel
+- Retrofit
+- OkHttp
+- DataStore
+- Coil
+- OkHttp WebSocket
