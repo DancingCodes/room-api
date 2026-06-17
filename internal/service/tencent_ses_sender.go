@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	ses "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ses/v20201002"
 
 	"room-api/internal/config"
@@ -32,7 +33,8 @@ func NewTencentSESMailSender(cfg config.Config) (*TencentSESMailSender, error) {
 		return nil, errors.New("SES模板ID错误")
 	}
 
-	client, err := ses.NewClientWithSecretId(cfg.TencentSecretID, cfg.TencentSecretKey, cfg.TencentSESRegion)
+	credential := common.NewCredential(cfg.TencentSecretID, cfg.TencentSecretKey)
+	client, err := ses.NewClient(credential, cfg.TencentSESRegion, nil)
 	if err != nil {
 		return nil, err
 	}
