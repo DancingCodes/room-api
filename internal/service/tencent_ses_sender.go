@@ -24,12 +24,12 @@ type TencentSESMailSender struct {
 func NewTencentSESMailSender(cfg config.Config) (*TencentSESMailSender, error) {
 	if cfg.TencentSecretID == "" || cfg.TencentSecretKey == "" ||
 		cfg.TencentSESRegion == "" || cfg.TencentSESFrom == "" || cfg.TencentSESTemplateID == "" {
-		return nil, errors.New("ses config is required")
+		return nil, errors.New("SES配置不能为空")
 	}
 
 	templateID, err := strconv.ParseUint(cfg.TencentSESTemplateID, 10, 64)
 	if err != nil || templateID == 0 {
-		return nil, errors.New("invalid ses template id")
+		return nil, errors.New("SES模板ID错误")
 	}
 
 	client, err := ses.NewClientWithSecretId(cfg.TencentSecretID, cfg.TencentSecretKey, cfg.TencentSESRegion)
