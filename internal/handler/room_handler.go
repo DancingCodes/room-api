@@ -73,18 +73,6 @@ func (h *RoomHandler) Detail(c *gin.Context) {
 		return
 	}
 
-	if len(result.Members) > 0 {
-		joined := result.Members[len(result.Members)-1]
-		h.hub.Broadcast(roomID, realtime.Event{
-			Type:   "member.joined",
-			RoomID: roomID,
-			Data: gin.H{
-				"member":          joined,
-				"current_members": result.Room.CurrentMembers,
-			},
-		})
-	}
-
 	response.OK(c, result)
 }
 
@@ -98,6 +86,18 @@ func (h *RoomHandler) Join(c *gin.Context) {
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return
+	}
+
+	if len(result.Members) > 0 {
+		joined := result.Members[len(result.Members)-1]
+		h.hub.Broadcast(roomID, realtime.Event{
+			Type:   "member.joined",
+			RoomID: roomID,
+			Data: gin.H{
+				"member":          joined,
+				"current_members": result.Room.CurrentMembers,
+			},
+		})
 	}
 
 	response.OK(c, result)
