@@ -53,7 +53,7 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 		return nil, err
 	}
 	if emailCode == "" {
-		return nil, errors.New("invalid email code")
+		return nil, errors.New("验证码错误")
 	}
 
 	exists, err := s.users.UsernameExists(username)
@@ -61,7 +61,7 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("username already exists")
+		return nil, errors.New("用户名已存在")
 	}
 
 	exists, err = s.users.EmailExists(email)
@@ -69,7 +69,7 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("email already exists")
+		return nil, errors.New("邮箱已存在")
 	}
 
 	exists, err = s.users.NicknameExists(nickname, 0)
@@ -77,7 +77,7 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("nickname already exists")
+		return nil, errors.New("昵称已存在")
 	}
 
 	if err := s.codes.Verify(email, EmailPurposeRegister, emailCode); err != nil {
@@ -106,19 +106,19 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 func (s *UserService) Login(username, password string) (*AuthResult, error) {
 	username = strings.TrimSpace(username)
 	if username == "" || password == "" {
-		return nil, errors.New("invalid params")
+		return nil, errors.New("参数错误")
 	}
 
 	user, err := s.users.FindByUsername(username)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("username or password is incorrect")
+		return nil, errors.New("用户名或密码错误")
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, errors.New("username or password is incorrect")
+		return nil, errors.New("用户名或密码错误")
 	}
 
 	return s.authResult(user)
@@ -139,7 +139,7 @@ func (s *UserService) Me(userID uint64) (*UserDTO, error) {
 func (s *UserService) UpdateNickname(userID uint64, nickname string) (*UserDTO, error) {
 	nickname = strings.TrimSpace(nickname)
 	if runeLen(nickname) < 1 || runeLen(nickname) > 8 {
-		return nil, errors.New("invalid params")
+		return nil, errors.New("参数错误")
 	}
 
 	exists, err := s.users.NicknameExists(nickname, userID)
@@ -147,7 +147,7 @@ func (s *UserService) UpdateNickname(userID uint64, nickname string) (*UserDTO, 
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("nickname already exists")
+		return nil, errors.New("昵称已存在")
 	}
 
 	user, err := s.users.UpdateNickname(userID, nickname)
@@ -165,7 +165,7 @@ func (s *UserService) UpdateNickname(userID uint64, nickname string) (*UserDTO, 
 func (s *UserService) UpdateAvatar(userID uint64, avatarURL string) (*UserDTO, error) {
 	avatarURL = strings.TrimSpace(avatarURL)
 	if avatarURL == "" {
-		return nil, errors.New("avatar is required")
+		return nil, errors.New("头像不能为空")
 	}
 
 	user, err := s.users.UpdateAvatar(userID, avatarURL)
@@ -184,13 +184,13 @@ func (s *UserService) ResetPassword(email, emailCode, newPassword string) error 
 	email = normalizeEmail(email)
 	emailCode = strings.TrimSpace(emailCode)
 	if _, err := mail.ParseAddress(email); err != nil {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 	if emailCode == "" {
-		return errors.New("invalid email code")
+		return errors.New("验证码错误")
 	}
 	if len(newPassword) < 6 || len(newPassword) > 20 {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 
 	user, err := s.users.FindByEmail(email)
@@ -243,19 +243,19 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 
 func validateUserFields(username, email, password, nickname, avatarURL string) error {
 	if !usernamePattern.MatchString(username) {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 	if len(password) < 6 || len(password) > 20 {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 	if runeLen(nickname) < 1 || runeLen(nickname) > 8 {
-		return errors.New("invalid params")
+		return errors.New("参数错误")
 	}
 	if avatarURL == "" {
-		return errors.New("avatar is required")
+		return errors.New("头像不能为空")
 	}
 	return nil
 }

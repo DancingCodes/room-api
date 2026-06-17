@@ -9,7 +9,7 @@ import (
 func OK(c *gin.Context, data any) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
-		"message": "ok",
+		"message": "成功",
 		"data":    data,
 	})
 }

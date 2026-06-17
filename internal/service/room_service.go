@@ -91,7 +91,7 @@ func (s *RoomService) List(page, pageSize int) (*RoomListDTO, error) {
 
 func (s *RoomService) Create(userID uint64, maxMembers uint8) (*RoomDetailDTO, error) {
 	if maxMembers != 2 && maxMembers != 8 {
-		return nil, errors.New("invalid room size")
+		return nil, errors.New("房间人数只能是2人或8人")
 	}
 
 	user, err := s.users.FindByID(userID)
@@ -112,13 +112,13 @@ func (s *RoomService) Detail(userID, roomID uint64) (*RoomDetailDTO, error) {
 		return nil, err
 	}
 	if !isMember {
-		return nil, errors.New("not room member")
+		return nil, errors.New("不在房间内")
 	}
 
 	room, members, err := s.rooms.Detail(roomID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("room not found")
+			return nil, errors.New("房间不存在")
 		}
 		return nil, err
 	}
@@ -156,7 +156,7 @@ func (s *RoomService) Leave(userID, roomID uint64) (*LeaveResultDTO, error) {
 
 func (s *RoomService) UpdateMicStatus(userID, roomID uint64, micStatus string) (*RoomMemberDTO, error) {
 	if micStatus != "on" && micStatus != "off" {
-		return nil, errors.New("invalid mic status")
+		return nil, errors.New("麦克风状态错误")
 	}
 
 	member, err := s.rooms.UpdateMicStatus(roomID, userID, micStatus)

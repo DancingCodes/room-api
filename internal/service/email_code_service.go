@@ -43,7 +43,7 @@ func (s *EmailCodeService) SendRegisterCode(email string) error {
 		return err
 	}
 	if exists {
-		return errors.New("email already exists")
+		return errors.New("邮箱已存在")
 	}
 
 	return s.send(email, EmailPurposeRegister, nil)
@@ -78,7 +78,7 @@ func (s *EmailCodeService) Verify(email, purpose, value string) error {
 		return err
 	}
 	if code == nil || code.Code != value {
-		return errors.New("invalid email code")
+		return errors.New("验证码错误")
 	}
 
 	return s.codes.MarkUsed(code.ID, now)
@@ -92,7 +92,7 @@ func (s *EmailCodeService) send(email, purpose string, userID *uint64) error {
 		return err
 	}
 	if recentCount > 0 {
-		return errors.New("email code send too frequently")
+		return errors.New("验证码发送过于频繁")
 	}
 
 	hourlyCount, err := s.codes.CountSince(email, purpose, now.Add(-emailCodeHourlyWindow))
@@ -100,7 +100,7 @@ func (s *EmailCodeService) send(email, purpose string, userID *uint64) error {
 		return err
 	}
 	if hourlyCount >= emailCodeHourlyLimit {
-		return errors.New("email code send limit exceeded")
+		return errors.New("验证码发送次数已达上限")
 	}
 
 	value, err := generateEmailCode()
@@ -137,7 +137,7 @@ func generateEmailCode() (string, error) {
 func normalizeEmailForCode(email string) (string, error) {
 	email = normalizeEmail(email)
 	if _, err := mail.ParseAddress(email); err != nil {
-		return "", errors.New("invalid params")
+		return "", errors.New("参数错误")
 	}
 	return email, nil
 }

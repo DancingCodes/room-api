@@ -44,13 +44,13 @@ func (h *RoomHandler) List(c *gin.Context) {
 func (h *RoomHandler) Create(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	var req createRoomRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -66,13 +66,13 @@ func (h *RoomHandler) Create(c *gin.Context) {
 func (h *RoomHandler) Detail(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -100,13 +100,13 @@ func (h *RoomHandler) Detail(c *gin.Context) {
 func (h *RoomHandler) Join(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -122,13 +122,13 @@ func (h *RoomHandler) Join(c *gin.Context) {
 func (h *RoomHandler) Leave(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -166,19 +166,19 @@ func (h *RoomHandler) Leave(c *gin.Context) {
 func (h *RoomHandler) UpdateMicStatus(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
 	var req updateMicRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 

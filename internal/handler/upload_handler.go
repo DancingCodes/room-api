@@ -20,7 +20,7 @@ func NewUploadHandler(uploads *service.UploadService, users *service.UserService
 func (h *UploadHandler) UploadAvatar(c *gin.Context) {
 	file, err := c.FormFile("file")
 	if err != nil {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -36,13 +36,13 @@ func (h *UploadHandler) UploadAvatar(c *gin.Context) {
 func (h *UploadHandler) UpdateMyAvatar(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 

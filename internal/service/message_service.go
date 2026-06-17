@@ -45,7 +45,7 @@ func (s *MessageService) List(userID, roomID uint64, limit int, beforeID uint64)
 		return nil, err
 	}
 	if !isMember {
-		return nil, errors.New("not room member")
+		return nil, errors.New("不在房间内")
 	}
 
 	limit = normalizeMessageLimit(limit)
@@ -72,12 +72,12 @@ func (s *MessageService) Create(userID, roomID uint64, content string) (*Message
 		return nil, err
 	}
 	if !isMember {
-		return nil, errors.New("not room member")
+		return nil, errors.New("不在房间内")
 	}
 
 	content = strings.TrimSpace(content)
 	if runeLen(content) < 1 || runeLen(content) > 50 {
-		return nil, errors.New("message content is invalid")
+		return nil, errors.New("消息内容长度错误")
 	}
 
 	message := &model.Message{

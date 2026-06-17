@@ -15,21 +15,21 @@ func Auth(jwtSvc *auth.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
 		if header == "" {
-			response.Error(c, 401, "unauthorized")
+			response.Error(c, 401, "未登录")
 			c.Abort()
 			return
 		}
 
 		parts := strings.SplitN(header, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
-			response.Error(c, 401, "unauthorized")
+			response.Error(c, 401, "未登录")
 			c.Abort()
 			return
 		}
 
 		claims, err := jwtSvc.Parse(parts[1])
 		if err != nil {
-			response.Error(c, 401, "unauthorized")
+			response.Error(c, 401, "未登录")
 			c.Abort()
 			return
 		}

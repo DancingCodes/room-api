@@ -25,13 +25,13 @@ type createMessageRequest struct {
 func (h *MessageHandler) List(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -50,19 +50,19 @@ func (h *MessageHandler) List(c *gin.Context) {
 func (h *MessageHandler) Create(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {
-		response.Error(c, 401, "unauthorized")
+		response.Error(c, 401, "未登录")
 		return
 	}
 
 	roomID, ok := parseUintParam(c, "room_id")
 	if !ok {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
 	var req createMessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "invalid params")
+		response.Error(c, 500, "参数错误")
 		return
 	}
 
