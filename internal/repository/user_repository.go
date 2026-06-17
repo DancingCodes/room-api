@@ -8,6 +8,8 @@ import (
 	"room-api/internal/model"
 )
 
+var ErrNotFound = gorm.ErrRecordNotFound
+
 type UserRepository struct {
 	db *gorm.DB
 }
@@ -31,6 +33,14 @@ func (r *UserRepository) FindByID(id uint64) (*model.User, error) {
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	if err := r.db.First(&user, "username = ?", username).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
+	var user model.User
+	if err := r.db.First(&user, "email = ?", email).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -62,6 +72,17 @@ func (r *UserRepository) UpdateNickname(userID uint64, nickname string) (*model.
 		return nil, err
 	}
 	return r.FindByID(userID)
+}
+
+func (r *UserRepository) UpdateAvatar(userID uint64, avatarURL string) (*model.User, error) {
+	if err := r.db.Model(&model.User{}).Where("id = ?", userID).Update("avatar_url", avatarURL).Error; err != nil {
+		return nil, err
+	}
+	return r.FindByID(userID)
+}
+
+func (r *UserRepository) UpdatePassword(userID uint64, passwordHash string) error {
+	return r.db.Model(&model.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
 }
 
 func (r *UserRepository) CurrentRoomID(userID uint64) (*uint64, error) {

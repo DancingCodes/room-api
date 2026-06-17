@@ -16,7 +16,10 @@ func main() {
 		log.Fatalf("connect database: %v", err)
 	}
 
-	r := router.New(cfg, db)
+	r, err := router.New(cfg, db)
+	if err != nil {
+		log.Fatalf("create router: %v", err)
+	}
 	if err := r.Run(":9999"); err != nil {
 		log.Fatalf("run server: %v", err)
 	}

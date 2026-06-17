@@ -10,10 +10,11 @@ import (
 
 type UserHandler struct {
 	users *service.UserService
+	codes *service.EmailCodeService
 }
 
-func NewUserHandler(users *service.UserService) *UserHandler {
-	return &UserHandler{users: users}
+func NewUserHandler(users *service.UserService, codes *service.EmailCodeService) *UserHandler {
+	return &UserHandler{users: users, codes: codes}
 }
 
 type registerRequest struct {
@@ -34,6 +35,31 @@ type updateMeRequest struct {
 	Nickname string `json:"nickname"`
 }
 
+type emailCodeRequest struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordRequest struct {
+	Email       string `json:"email"`
+	EmailCode   string `json:"email_code"`
+	NewPassword string `json:"new_password"`
+}
+
+func (h *UserHandler) SendRegisterCode(c *gin.Context) {
+	var req emailCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 500, "invalid params")
+		return
+	}
+
+	if err := h.codes.SendRegisterCode(req.Email); err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	response.OK(c, nil)
+}
+
 func (h *UserHandler) Register(c *gin.Context) {
 	var req registerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -45,7 +71,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.users.Register(req.Username, req.Email, req.Password, req.Nickname, req.AvatarURL)
+	result, err := h.users.Register(req.Username, req.Email, req.EmailCode, req.Password, req.Nickname, req.AvatarURL)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return
@@ -68,6 +94,36 @@ func (h *UserHandler) Login(c *gin.Context) {
 	}
 
 	response.OK(c, result)
+}
+
+func (h *UserHandler) SendPasswordResetCode(c *gin.Context) {
+	var req emailCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 500, "invalid params")
+		return
+	}
+
+	if err := h.codes.SendResetPasswordCode(req.Email); err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	response.OK(c, nil)
+}
+
+func (h *UserHandler) ResetPassword(c *gin.Context) {
+	var req resetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 500, "invalid params")
+		return
+	}
+
+	if err := h.users.ResetPassword(req.Email, req.EmailCode, req.NewPassword); err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	response.OK(c, nil)
 }
 
 func (h *UserHandler) Me(c *gin.Context) {
