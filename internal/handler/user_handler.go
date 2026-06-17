@@ -47,8 +47,7 @@ type resetPasswordRequest struct {
 
 func (h *UserHandler) SendRegisterCode(c *gin.Context) {
 	var req emailCodeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 
@@ -62,8 +61,7 @@ func (h *UserHandler) SendRegisterCode(c *gin.Context) {
 
 func (h *UserHandler) Register(c *gin.Context) {
 	var req registerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 	if req.EmailCode == "" {
@@ -82,8 +80,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 
 func (h *UserHandler) Login(c *gin.Context) {
 	var req loginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 
@@ -98,8 +95,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 func (h *UserHandler) SendPasswordResetCode(c *gin.Context) {
 	var req emailCodeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 
@@ -113,8 +109,7 @@ func (h *UserHandler) SendPasswordResetCode(c *gin.Context) {
 
 func (h *UserHandler) ResetPassword(c *gin.Context) {
 	var req resetPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 
@@ -127,9 +122,8 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 }
 
 func (h *UserHandler) Me(c *gin.Context) {
-	userID, ok := middleware.CurrentUserID(c)
+	userID, ok := userCurrentUser(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
 		return
 	}
 
@@ -143,15 +137,13 @@ func (h *UserHandler) Me(c *gin.Context) {
 }
 
 func (h *UserHandler) UpdateMe(c *gin.Context) {
-	userID, ok := middleware.CurrentUserID(c)
+	userID, ok := userCurrentUser(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
 		return
 	}
 
 	var req updateMeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindUserJSON(c, &req) {
 		return
 	}
 
@@ -162,4 +154,21 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 	}
 
 	response.OK(c, gin.H{"user": user})
+}
+
+func userCurrentUser(c *gin.Context) (uint64, bool) {
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.Error(c, 401, "未登录")
+		return 0, false
+	}
+	return userID, true
+}
+
+func bindUserJSON(c *gin.Context, dst any) bool {
+	if err := c.ShouldBindJSON(dst); err != nil {
+		response.Error(c, 500, "参数错误")
+		return false
+	}
+	return true
 }

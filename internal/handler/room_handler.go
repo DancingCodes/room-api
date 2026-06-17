@@ -42,15 +42,13 @@ func (h *RoomHandler) List(c *gin.Context) {
 }
 
 func (h *RoomHandler) Create(c *gin.Context) {
-	userID, ok := middleware.CurrentUserID(c)
+	userID, ok := roomCurrentUser(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
 		return
 	}
 
 	var req createRoomRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindRoomJSON(c, &req) {
 		return
 	}
 
@@ -64,7 +62,7 @@ func (h *RoomHandler) Create(c *gin.Context) {
 }
 
 func (h *RoomHandler) Detail(c *gin.Context) {
-	userID, roomID, ok := currentUserAndRoomID(c)
+	userID, roomID, ok := roomCurrentUserAndRoomID(c)
 	if !ok {
 		return
 	}
@@ -91,7 +89,7 @@ func (h *RoomHandler) Detail(c *gin.Context) {
 }
 
 func (h *RoomHandler) Join(c *gin.Context) {
-	userID, roomID, ok := currentUserAndRoomID(c)
+	userID, roomID, ok := roomCurrentUserAndRoomID(c)
 	if !ok {
 		return
 	}
@@ -106,7 +104,7 @@ func (h *RoomHandler) Join(c *gin.Context) {
 }
 
 func (h *RoomHandler) Leave(c *gin.Context) {
-	userID, roomID, ok := currentUserAndRoomID(c)
+	userID, roomID, ok := roomCurrentUserAndRoomID(c)
 	if !ok {
 		return
 	}
@@ -143,14 +141,13 @@ func (h *RoomHandler) Leave(c *gin.Context) {
 }
 
 func (h *RoomHandler) UpdateMicStatus(c *gin.Context) {
-	userID, roomID, ok := currentUserAndRoomID(c)
+	userID, roomID, ok := roomCurrentUserAndRoomID(c)
 	if !ok {
 		return
 	}
 
 	var req updateMicRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.Error(c, 500, "参数错误")
+	if !bindRoomJSON(c, &req) {
 		return
 	}
 
@@ -167,6 +164,38 @@ func (h *RoomHandler) UpdateMicStatus(c *gin.Context) {
 	})
 
 	response.OK(c, gin.H{"member": member})
+}
+
+func roomCurrentUser(c *gin.Context) (uint64, bool) {
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.Error(c, 401, "未登录")
+		return 0, false
+	}
+	return userID, true
+}
+
+func roomCurrentUserAndRoomID(c *gin.Context) (uint64, uint64, bool) {
+	userID, ok := roomCurrentUser(c)
+	if !ok {
+		return 0, 0, false
+	}
+
+	roomID, ok := parseUintParam(c, "room_id")
+	if !ok {
+		response.Error(c, 500, "参数错误")
+		return 0, 0, false
+	}
+
+	return userID, roomID, true
+}
+
+func bindRoomJSON(c *gin.Context, dst any) bool {
+	if err := c.ShouldBindJSON(dst); err != nil {
+		response.Error(c, 500, "参数错误")
+		return false
+	}
+	return true
 }
 
 func parseUintParam(c *gin.Context, name string) (uint64, bool) {
