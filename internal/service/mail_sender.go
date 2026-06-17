@@ -10,6 +10,6 @@ type MailSender interface {
 
 type DisabledMailSender struct{}
 
-func (DisabledMailSender) SendVerificationCode(email string, code string) error {
+func (DisabledMailSender) SendVerificationCode(string, string) error {
 	return ErrMailSenderNotConfigured
 }

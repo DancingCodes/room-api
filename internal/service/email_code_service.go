@@ -126,8 +126,8 @@ func (s *EmailCodeService) send(email, purpose string, userID *uint64) error {
 }
 
 func generateEmailCode() (string, error) {
-	max := big.NewInt(1000000)
-	n, err := rand.Int(rand.Reader, max)
+	upperBound := big.NewInt(1000000)
+	n, err := rand.Int(rand.Reader, upperBound)
 	if err != nil {
 		return "", err
 	}
