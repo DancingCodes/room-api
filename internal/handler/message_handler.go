@@ -23,15 +23,8 @@ type createMessageRequest struct {
 }
 
 func (h *MessageHandler) List(c *gin.Context) {
-	userID, ok := middleware.CurrentUserID(c)
+	userID, roomID, ok := currentUserAndRoomID(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
-		return
-	}
-
-	roomID, ok := parseUintParam(c, "room_id")
-	if !ok {
-		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -48,15 +41,8 @@ func (h *MessageHandler) List(c *gin.Context) {
 }
 
 func (h *MessageHandler) Create(c *gin.Context) {
-	userID, ok := middleware.CurrentUserID(c)
+	userID, roomID, ok := currentUserAndRoomID(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
-		return
-	}
-
-	roomID, ok := parseUintParam(c, "room_id")
-	if !ok {
-		response.Error(c, 500, "参数错误")
 		return
 	}
 
@@ -79,4 +65,20 @@ func (h *MessageHandler) Create(c *gin.Context) {
 	})
 
 	response.OK(c, gin.H{"message": message})
+}
+
+func currentUserAndRoomID(c *gin.Context) (uint64, uint64, bool) {
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.Error(c, 401, "未登录")
+		return 0, 0, false
+	}
+
+	roomID, ok := parseUintParam(c, "room_id")
+	if !ok {
+		response.Error(c, 500, "参数错误")
+		return 0, 0, false
+	}
+
+	return userID, roomID, true
 }
