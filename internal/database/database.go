@@ -11,7 +11,7 @@ import (
 
 func Open(cfg config.Config) (*gorm.DB, error) {
 	if cfg.MySQLDSN == "" {
-		return nil, errors.New("MYSQL_DSN is required")
+		return nil, errors.New("MYSQL_DSN不能为空")
 	}
 
 	return gorm.Open(mysql.Open(cfg.MySQLDSN), &gorm.Config{})
