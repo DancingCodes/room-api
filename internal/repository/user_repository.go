@@ -30,6 +30,23 @@ func (r *UserRepository) FindByID(id uint64) (*model.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) FindByIDs(ids []uint64) (map[uint64]model.User, error) {
+	if len(ids) == 0 {
+		return map[uint64]model.User{}, nil
+	}
+
+	var users []model.User
+	if err := r.db.Find(&users, "id IN ?", ids).Error; err != nil {
+		return nil, err
+	}
+
+	result := make(map[uint64]model.User, len(users))
+	for _, user := range users {
+		result[user.ID] = user
+	}
+	return result, nil
+}
+
 func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
 	var user model.User
 	if err := r.db.First(&user, "username = ?", username).Error; err != nil {

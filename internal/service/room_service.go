@@ -191,11 +191,26 @@ func roomDTO(room *model.Room, currentMembers int64) RoomDTO {
 }
 
 func (s *RoomService) memberDTOs(members []model.RoomMember) ([]RoomMemberDTO, error) {
+	userIDs := make([]uint64, 0, len(members))
+	seen := make(map[uint64]struct{}, len(members))
+	for _, member := range members {
+		if _, ok := seen[member.UserID]; ok {
+			continue
+		}
+		seen[member.UserID] = struct{}{}
+		userIDs = append(userIDs, member.UserID)
+	}
+
+	users, err := s.users.FindByIDs(userIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	result := make([]RoomMemberDTO, 0, len(members))
 	for _, member := range members {
-		user, err := s.users.FindByID(member.UserID)
-		if err != nil {
-			return nil, err
+		user, ok := users[member.UserID]
+		if !ok {
+			return nil, gorm.ErrRecordNotFound
 		}
 		result = append(result, RoomMemberDTO{
 			UserID:    member.UserID,

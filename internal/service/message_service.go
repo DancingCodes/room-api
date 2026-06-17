@@ -54,9 +54,14 @@ func (s *MessageService) List(userID, roomID uint64, limit int, beforeID uint64)
 		return nil, err
 	}
 
+	senders, err := s.senderMap(messages)
+	if err != nil {
+		return nil, err
+	}
+
 	list := make([]MessageDTO, 0, len(messages))
 	for _, message := range messages {
-		dto, err := s.toDTO(&message)
+		dto, err := s.toDTO(&message, senders)
 		if err != nil {
 			return nil, err
 		}
@@ -90,19 +95,36 @@ func (s *MessageService) Create(userID, roomID uint64, content string) (*Message
 		return nil, err
 	}
 
-	dto, err := s.toDTO(message)
+	sender, err := s.users.FindByID(userID)
 	if err != nil {
 		return nil, err
 	}
+	dto := messageDTO(message, sender)
 	return &dto, nil
 }
 
-func (s *MessageService) toDTO(message *model.Message) (MessageDTO, error) {
-	sender, err := s.users.FindByID(message.SenderID)
-	if err != nil {
-		return MessageDTO{}, err
+func (s *MessageService) senderMap(messages []model.Message) (map[uint64]model.User, error) {
+	senderIDs := make([]uint64, 0, len(messages))
+	seen := make(map[uint64]struct{}, len(messages))
+	for _, message := range messages {
+		if _, ok := seen[message.SenderID]; ok {
+			continue
+		}
+		seen[message.SenderID] = struct{}{}
+		senderIDs = append(senderIDs, message.SenderID)
 	}
+	return s.users.FindByIDs(senderIDs)
+}
 
+func (s *MessageService) toDTO(message *model.Message, senders map[uint64]model.User) (MessageDTO, error) {
+	sender, ok := senders[message.SenderID]
+	if !ok {
+		return MessageDTO{}, repository.ErrNotFound
+	}
+	return messageDTO(message, &sender), nil
+}
+
+func messageDTO(message *model.Message, sender *model.User) MessageDTO {
 	return MessageDTO{
 		ID:              message.ID,
 		RoomID:          message.RoomID,
@@ -112,7 +134,7 @@ func (s *MessageService) toDTO(message *model.Message) (MessageDTO, error) {
 		Type:            message.Type,
 		Content:         message.Content,
 		CreatedAt:       formatTime(message.CreatedAt),
-	}, nil
+	}
 }
 
 func normalizeMessageLimit(limit int) int {
