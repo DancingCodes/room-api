@@ -1,5 +1,5 @@
 param(
-    [string]$BaseUrl = "http://127.0.0.1:9999",
+    [string]$BaseUrl = "http://127.0.0.1:8080",
     [string]$Account = "",
     [string]$Email = "",
     [string]$Password = "123456",

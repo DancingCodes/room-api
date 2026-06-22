@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("创建路由失败: %v", err)
 	}
-	if err := r.Run(":9999"); err != nil {
+	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("启动服务失败: %v", err)
 	}
 }
