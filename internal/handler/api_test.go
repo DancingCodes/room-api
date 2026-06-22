@@ -51,7 +51,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			name:        "register requires email code",
 			method:      http.MethodPost,
 			path:        "/api/v1/auth/register",
-			body:        `{"username":"alex_001","email":"alex@example.com","password":"123456","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
+			body:        `{"account":"alex_001","email":"alex@example.com","password":"123456","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
 			wantCode:    500,
 			wantMessage: "验证码错误",
 		},

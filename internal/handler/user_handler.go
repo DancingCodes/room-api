@@ -18,7 +18,7 @@ func NewUserHandler(users *service.UserService, codes *service.EmailCodeService)
 }
 
 type registerRequest struct {
-	Username  string `json:"username"`
+	Account   string `json:"account"`
 	Email     string `json:"email"`
 	EmailCode string `json:"email_code"`
 	Password  string `json:"password"`
@@ -27,7 +27,7 @@ type registerRequest struct {
 }
 
 type loginRequest struct {
-	Username string `json:"username"`
+	Account  string `json:"account"`
 	Password string `json:"password"`
 }
 
@@ -69,7 +69,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.users.Register(req.Username, req.Email, req.EmailCode, req.Password, req.Nickname, req.AvatarURL)
+	result, err := h.users.Register(req.Account, req.Email, req.EmailCode, req.Password, req.Nickname, req.AvatarURL)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return
@@ -84,7 +84,7 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.users.Login(req.Username, req.Password)
+	result, err := h.users.Login(req.Account, req.Password)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return

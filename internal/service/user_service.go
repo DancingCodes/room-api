@@ -14,7 +14,7 @@ import (
 	"room-api/internal/repository"
 )
 
-var usernamePattern = regexp.MustCompile(`^[A-Za-z0-9_]{4,20}$`)
+var accountPattern = regexp.MustCompile(`^[A-Za-z0-9_]{4,20}$`)
 
 type UserService struct {
 	users  *repository.UserRepository
@@ -24,7 +24,7 @@ type UserService struct {
 
 type UserDTO struct {
 	ID            uint64  `json:"id"`
-	Username      string  `json:"username"`
+	Account       string  `json:"account"`
 	Email         string  `json:"email"`
 	Nickname      string  `json:"nickname"`
 	AvatarURL     string  `json:"avatar_url"`
@@ -42,26 +42,26 @@ func NewUserService(users *repository.UserRepository, tokens *auth.Service, code
 	return &UserService{users: users, tokens: tokens, codes: codes}
 }
 
-func (s *UserService) Register(username, email, emailCode, password, nickname, avatarURL string) (*AuthResult, error) {
-	username = strings.TrimSpace(username)
+func (s *UserService) Register(account, email, emailCode, password, nickname, avatarURL string) (*AuthResult, error) {
+	account = strings.TrimSpace(account)
 	email = normalizeEmail(email)
 	emailCode = strings.TrimSpace(emailCode)
 	nickname = strings.TrimSpace(nickname)
 	avatarURL = strings.TrimSpace(avatarURL)
 
-	if err := validateUserFields(username, email, password, nickname, avatarURL); err != nil {
+	if err := validateUserFields(account, email, password, nickname, avatarURL); err != nil {
 		return nil, err
 	}
 	if emailCode == "" {
 		return nil, errors.New("验证码错误")
 	}
 
-	exists, err := s.users.UsernameExists(username)
+	exists, err := s.users.AccountExists(account)
 	if err != nil {
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("用户名已存在")
+		return nil, errors.New("账号已存在")
 	}
 
 	exists, err = s.users.EmailExists(email)
@@ -90,7 +90,7 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 	}
 
 	user := &model.User{
-		Username:     username,
+		Account:      account,
 		Email:        email,
 		Nickname:     nickname,
 		PasswordHash: string(passwordHash),
@@ -103,22 +103,22 @@ func (s *UserService) Register(username, email, emailCode, password, nickname, a
 	return s.authResult(user)
 }
 
-func (s *UserService) Login(username, password string) (*AuthResult, error) {
-	username = strings.TrimSpace(username)
-	if username == "" || password == "" {
+func (s *UserService) Login(account, password string) (*AuthResult, error) {
+	account = strings.TrimSpace(account)
+	if account == "" || password == "" {
 		return nil, errors.New("参数错误")
 	}
 
-	user, err := s.users.FindByUsername(username)
+	user, err := s.users.FindByAccount(account)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("用户名或密码错误")
+		return nil, errors.New("账号或密码错误")
 	}
 	if err != nil {
 		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, errors.New("用户名或密码错误")
+		return nil, errors.New("账号或密码错误")
 	}
 
 	return s.authResult(user)
@@ -231,7 +231,7 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 
 	return UserDTO{
 		ID:            user.ID,
-		Username:      user.Username,
+		Account:       user.Account,
 		Email:         user.Email,
 		Nickname:      user.Nickname,
 		AvatarURL:     user.AvatarURL,
@@ -241,8 +241,8 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 	}, nil
 }
 
-func validateUserFields(username, email, password, nickname, avatarURL string) error {
-	if !usernamePattern.MatchString(username) {
+func validateUserFields(account, email, password, nickname, avatarURL string) error {
+	if !accountPattern.MatchString(account) {
 		return errors.New("参数错误")
 	}
 	if _, err := mail.ParseAddress(email); err != nil {

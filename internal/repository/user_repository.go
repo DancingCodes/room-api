@@ -47,9 +47,9 @@ func (r *UserRepository) FindByIDs(ids []uint64) (map[uint64]model.User, error) 
 	return result, nil
 }
 
-func (r *UserRepository) FindByUsername(username string) (*model.User, error) {
+func (r *UserRepository) FindByAccount(account string) (*model.User, error) {
 	var user model.User
-	if err := r.db.First(&user, "username = ?", username).Error; err != nil {
+	if err := r.db.First(&user, "account = ?", account).Error; err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -63,8 +63,8 @@ func (r *UserRepository) FindByEmail(email string) (*model.User, error) {
 	return &user, nil
 }
 
-func (r *UserRepository) UsernameExists(username string) (bool, error) {
-	return r.exists("username = ?", username)
+func (r *UserRepository) AccountExists(account string) (bool, error) {
+	return r.exists("account = ?", account)
 }
 
 func (r *UserRepository) EmailExists(email string) (bool, error) {

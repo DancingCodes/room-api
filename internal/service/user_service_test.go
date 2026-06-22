@@ -13,7 +13,7 @@ func TestNormalizeEmail(t *testing.T) {
 func TestValidateUserFields(t *testing.T) {
 	tests := []struct {
 		name      string
-		username  string
+		account   string
 		email     string
 		password  string
 		nickname  string
@@ -22,15 +22,15 @@ func TestValidateUserFields(t *testing.T) {
 	}{
 		{
 			name:      "valid",
-			username:  "alex_001",
+			account:   "alex_001",
 			email:     "alex@example.com",
 			password:  "123456",
 			nickname:  "Alex",
 			avatarURL: "https://example.com/avatar.png",
 		},
 		{
-			name:      "username too short",
-			username:  "abc",
+			name:      "account too short",
+			account:   "abc",
 			email:     "alex@example.com",
 			password:  "123456",
 			nickname:  "Alex",
@@ -38,8 +38,8 @@ func TestValidateUserFields(t *testing.T) {
 			wantErr:   true,
 		},
 		{
-			name:      "username has invalid char",
-			username:  "alex-001",
+			name:      "account has invalid char",
+			account:   "alex-001",
 			email:     "alex@example.com",
 			password:  "123456",
 			nickname:  "Alex",
@@ -48,7 +48,7 @@ func TestValidateUserFields(t *testing.T) {
 		},
 		{
 			name:      "invalid email",
-			username:  "alex_001",
+			account:   "alex_001",
 			email:     "not-email",
 			password:  "123456",
 			nickname:  "Alex",
@@ -57,7 +57,7 @@ func TestValidateUserFields(t *testing.T) {
 		},
 		{
 			name:      "password too short",
-			username:  "alex_001",
+			account:   "alex_001",
 			email:     "alex@example.com",
 			password:  "12345",
 			nickname:  "Alex",
@@ -66,7 +66,7 @@ func TestValidateUserFields(t *testing.T) {
 		},
 		{
 			name:      "nickname too long by rune",
-			username:  "alex_001",
+			account:   "alex_001",
 			email:     "alex@example.com",
 			password:  "123456",
 			nickname:  "一二三四五六七八九",
@@ -75,7 +75,7 @@ func TestValidateUserFields(t *testing.T) {
 		},
 		{
 			name:      "avatar required",
-			username:  "alex_001",
+			account:   "alex_001",
 			email:     "alex@example.com",
 			password:  "123456",
 			nickname:  "Alex",
@@ -86,7 +86,7 @@ func TestValidateUserFields(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateUserFields(tt.username, tt.email, tt.password, tt.nickname, tt.avatarURL)
+			err := validateUserFields(tt.account, tt.email, tt.password, tt.nickname, tt.avatarURL)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("validateUserFields() error = %v, wantErr %v", err, tt.wantErr)
 			}

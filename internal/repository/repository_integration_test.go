@@ -191,7 +191,7 @@ func createIntegrationUser(t *testing.T, users *UserRepository, prefix string, r
 	t.Helper()
 
 	user := &model.User{
-		Username:     prefix + "_" + role,
+		Account:      prefix + "_" + role,
 		Email:        prefix + "_" + role + "@example.com",
 		Nickname:     role[:3] + prefix[len(prefix)-4:],
 		PasswordHash: "hash",
@@ -208,7 +208,7 @@ func cleanupIntegrationData(t *testing.T, db *gorm.DB, prefix string) {
 
 	var userIDs []uint64
 	if err := db.Model(&model.User{}).
-		Where("username LIKE ?", prefix+"_%").
+		Where("account LIKE ?", prefix+"_%").
 		Pluck("id", &userIDs).Error; err != nil {
 		t.Fatalf("find integration users: %v", err)
 	}

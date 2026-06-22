@@ -1,6 +1,6 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:9999",
-    [string]$Username = "",
+    [string]$Account = "",
     [string]$Email = "",
     [string]$Password = "123456",
     [string]$Nickname = "",
@@ -41,14 +41,14 @@ function Invoke-RoomApi {
     return $response
 }
 
-if ($Username -eq "" -or $Email -eq "") {
-    Write-Host "Username and email are required."
-    Write-Host "Usage: .\scripts\email-smoke.ps1 -Username `"roomtest01`" -Email `"you@example.com`""
+if ($Account -eq "" -or $Email -eq "") {
+    Write-Host "Account and email are required."
+    Write-Host "Usage: .\scripts\email-smoke.ps1 -Account `"roomtest01`" -Email `"you@example.com`""
     exit 0
 }
 
 if ($Nickname -eq "") {
-    $suffix = $Username
+    $suffix = $Account
     if ($suffix.Length -gt 5) {
         $suffix = $suffix.Substring($suffix.Length - 5)
     }
@@ -75,7 +75,7 @@ if ($code -eq "") {
 
 Write-Host "Registering user..."
 $register = Invoke-RoomApi -Method POST -Path "/api/v1/auth/register" -Body @{
-    username = $Username
+    account = $Account
     email = $Email
     email_code = $code
     password = $Password
@@ -86,7 +86,7 @@ Write-Host "OK register => user_id $($register.data.user.id)"
 
 Write-Host "Logging in..."
 $login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/login" -Body @{
-    username = $Username
+    account = $Account
     password = $Password
 }
 if ($login.data.token -eq "") {
