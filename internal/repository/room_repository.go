@@ -124,16 +124,30 @@ func (r *RoomRepository) Detail(roomID uint64) (*model.Room, []model.RoomMember,
 	return room, members, nil
 }
 
-func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomMember, error) {
+func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomMember, bool, error) {
 	var room model.Room
+	joined := false
 
 	err := r.db.Transaction(func(tx *gorm.DB) error {
-		var count int64
-		if err := tx.Model(&model.RoomMember{}).Where("user_id = ?", userID).Count(&count).Error; err != nil {
+		var existingMember model.RoomMember
+		err := tx.First(&existingMember, "user_id = ?", userID).Error
+		if err == nil {
+			var existingRoom model.Room
+			existingRoomErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&existingRoom, "id = ?", existingMember.RoomID).Error
+			if errors.Is(existingRoomErr, gorm.ErrRecordNotFound) {
+				if err := tx.Delete(&model.RoomMember{}, "id = ?", existingMember.ID).Error; err != nil {
+					return err
+				}
+			} else if existingRoomErr != nil {
+				return existingRoomErr
+			} else if existingMember.RoomID == roomID {
+				room = existingRoom
+				return nil
+			} else {
+				return errors.New("用户已在房间内")
+			}
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
-		}
-		if count > 0 {
-			return errors.New("用户已在房间内")
 		}
 
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&room, "id = ?", roomID).Error; err != nil {
@@ -143,6 +157,7 @@ func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomM
 			return err
 		}
 
+		var count int64
 		if err := tx.Model(&model.RoomMember{}).Where("room_id = ?", roomID).Count(&count).Error; err != nil {
 			return err
 		}
@@ -156,17 +171,21 @@ func (r *RoomRepository) Join(roomID, userID uint64) (*model.Room, []model.RoomM
 			MicStatus: "off",
 			JoinedAt:  time.Now(),
 		}
-		return tx.Create(&member).Error
+		if err := tx.Create(&member).Error; err != nil {
+			return err
+		}
+		joined = true
+		return nil
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
 
 	members, err := r.ListMembers(roomID)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
 	}
-	return &room, members, nil
+	return &room, members, joined, nil
 }
 
 type LeaveResult struct {

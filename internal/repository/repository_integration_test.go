@@ -42,12 +42,12 @@ func TestRoomRepositoryIntegration(t *testing.T) {
 		t.Fatalf("Create() duplicate owner error = %v, want 用户已在房间内", err)
 	}
 
-	joinedRoom, joinedMembers, err := rooms.Join(room.ID, guest.ID)
+	joinedRoom, joinedMembers, joined, err := rooms.Join(room.ID, guest.ID)
 	if err != nil {
 		t.Fatalf("Join() error = %v", err)
 	}
-	if joinedRoom.ID != room.ID || len(joinedMembers) != 2 {
-		t.Fatalf("Join() room = %+v members = %+v", joinedRoom, joinedMembers)
+	if !joined || joinedRoom.ID != room.ID || len(joinedMembers) != 2 {
+		t.Fatalf("Join() joined = %v room = %+v members = %+v", joined, joinedRoom, joinedMembers)
 	}
 
 	list, total, err := rooms.List(1, 20)

@@ -40,10 +40,10 @@ type RoomMemberDTO struct {
 }
 
 type RoomDetailDTO struct {
+	Joined  bool            `json:"-"`
 	Room    RoomDTO         `json:"room"`
 	Members []RoomMemberDTO `json:"members"`
 }
-
 type RoomListDTO struct {
 	List     []RoomDTO `json:"list"`
 	Total    int64     `json:"total"`
@@ -123,11 +123,16 @@ func (s *RoomService) Detail(userID, roomID uint64) (*RoomDetailDTO, error) {
 }
 
 func (s *RoomService) Join(userID, roomID uint64) (*RoomDetailDTO, error) {
-	room, members, err := s.rooms.Join(roomID, userID)
+	room, members, joined, err := s.rooms.Join(roomID, userID)
 	if err != nil {
 		return nil, err
 	}
-	return s.detailDTO(room, members)
+	detail, err := s.detailDTO(room, members)
+	if err != nil {
+		return nil, err
+	}
+	detail.Joined = joined
+	return detail, nil
 }
 
 func (s *RoomService) Leave(userID, roomID uint64) (*LeaveResultDTO, error) {

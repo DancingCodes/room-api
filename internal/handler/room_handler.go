@@ -88,7 +88,7 @@ func (h *RoomHandler) Join(c *gin.Context) {
 		return
 	}
 
-	if len(result.Members) > 0 {
+	if result.Joined && len(result.Members) > 0 {
 		joined := result.Members[len(result.Members)-1]
 		h.hub.Broadcast(roomID, realtime.Event{
 			Type:   "member.joined",
