@@ -10,48 +10,20 @@ func TestNormalizeEmail(t *testing.T) {
 	}
 }
 
-func TestValidateUserFields(t *testing.T) {
+func TestNicknameBase(t *testing.T) {
 	tests := []struct {
-		name      string
-		email     string
-		nickname  string
-		avatarURL string
-		wantErr   bool
+		email string
+		want  string
 	}{
-		{
-			name:      "valid",
-			email:     "alex@example.com",
-			nickname:  "Alex",
-			avatarURL: "https://example.com/avatar.png",
-		},
-		{
-			name:      "invalid email",
-			email:     "not-email",
-			nickname:  "Alex",
-			avatarURL: "https://example.com/avatar.png",
-			wantErr:   true,
-		},
-		{
-			name:      "nickname too long by rune",
-			email:     "alex@example.com",
-			nickname:  "一二三四五六七八九",
-			avatarURL: "https://example.com/avatar.png",
-			wantErr:   true,
-		},
-		{
-			name:      "avatar required",
-			email:     "alex@example.com",
-			nickname:  "Alex",
-			avatarURL: "",
-			wantErr:   true,
-		},
+		{email: "alex@example.com", want: "alex"},
+		{email: "abcdefghijk@example.com", want: "abcdefgh"},
+		{email: "@example.com", want: "用户"},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateUserFields(tt.email, tt.nickname, tt.avatarURL)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("validateUserFields() error = %v, wantErr %v", err, tt.wantErr)
+		t.Run(tt.email, func(t *testing.T) {
+			if got := nicknameBase(tt.email); got != tt.want {
+				t.Fatalf("nicknameBase() = %q, want %q", got, tt.want)
 			}
 		})
 	}

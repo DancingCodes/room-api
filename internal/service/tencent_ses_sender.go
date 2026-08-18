@@ -15,7 +15,7 @@ import (
 	"room-api/internal/config"
 )
 
-const verificationEmailSubject = "Room账号验证码"
+const verificationEmailSubject = "Room验证码"
 
 type TencentSESMailSender struct {
 	client     *ses.Client

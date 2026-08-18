@@ -56,13 +56,9 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	{
 		authRoutes := api.Group("/auth")
 		{
-			authRoutes.POST("/register-code", userHandler.SendRegisterCode)
-			authRoutes.POST("/register", userHandler.Register)
-			authRoutes.POST("/login-code", userHandler.SendLoginCode)
-			authRoutes.POST("/login", userHandler.Login)
+			authRoutes.POST("/email-code", userHandler.SendEmailCode)
+			authRoutes.POST("/email-login", userHandler.EmailLogin)
 		}
-
-		api.POST("/uploads/avatar", uploadHandler.UploadAvatar)
 
 		users := api.Group("/users", middleware.Auth(jwtSvc))
 		{

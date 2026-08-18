@@ -17,14 +17,7 @@ func NewUserHandler(users *service.UserService, codes *service.EmailCodeService)
 	return &UserHandler{users: users, codes: codes}
 }
 
-type registerRequest struct {
-	Email     string `json:"email"`
-	EmailCode string `json:"email_code"`
-	Nickname  string `json:"nickname"`
-	AvatarURL string `json:"avatar_url"`
-}
-
-type loginRequest struct {
+type emailLoginRequest struct {
 	Email     string `json:"email"`
 	EmailCode string `json:"email_code"`
 }
@@ -37,13 +30,13 @@ type emailCodeRequest struct {
 	Email string `json:"email"`
 }
 
-func (h *UserHandler) SendRegisterCode(c *gin.Context) {
+func (h *UserHandler) SendEmailCode(c *gin.Context) {
 	var req emailCodeRequest
 	if !bindUserJSON(c, &req) {
 		return
 	}
 
-	if err := h.codes.SendRegisterCode(req.Email); err != nil {
+	if err := h.codes.SendEmailCode(req.Email); err != nil {
 		response.Error(c, 500, err.Error())
 		return
 	}
@@ -51,46 +44,13 @@ func (h *UserHandler) SendRegisterCode(c *gin.Context) {
 	response.OK(c, nil)
 }
 
-func (h *UserHandler) SendLoginCode(c *gin.Context) {
-	var req emailCodeRequest
+func (h *UserHandler) EmailLogin(c *gin.Context) {
+	var req emailLoginRequest
 	if !bindUserJSON(c, &req) {
 		return
 	}
 
-	if err := h.codes.SendLoginCode(req.Email); err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-
-	response.OK(c, nil)
-}
-
-func (h *UserHandler) Register(c *gin.Context) {
-	var req registerRequest
-	if !bindUserJSON(c, &req) {
-		return
-	}
-	if req.EmailCode == "" {
-		response.Error(c, 500, "验证码错误")
-		return
-	}
-
-	result, err := h.users.Register(req.Email, req.EmailCode, req.Nickname, req.AvatarURL)
-	if err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-
-	response.OK(c, result)
-}
-
-func (h *UserHandler) Login(c *gin.Context) {
-	var req loginRequest
-	if !bindUserJSON(c, &req) {
-		return
-	}
-
-	result, err := h.users.Login(req.Email, req.EmailCode)
+	result, err := h.users.EmailLogin(req.Email, req.EmailCode)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return

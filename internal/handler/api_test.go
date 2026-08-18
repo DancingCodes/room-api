@@ -26,8 +26,8 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 
 	authRoutes := router.Group("/api/v1/auth")
 	{
-		authRoutes.POST("/register", userHandler.Register)
-		authRoutes.POST("/login", userHandler.Login)
+		authRoutes.POST("/email-code", userHandler.SendEmailCode)
+		authRoutes.POST("/email-login", userHandler.EmailLogin)
 	}
 
 	tests := []struct {
@@ -39,25 +39,17 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 		wantMessage string
 	}{
 		{
-			name:        "register rejects invalid json",
+			name:        "email code rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/auth/register",
+			path:        "/api/v1/auth/email-code",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",
 		},
 		{
-			name:        "register requires email code",
+			name:        "email login rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/auth/register",
-			body:        `{"email":"alex@example.com","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
-			wantCode:    500,
-			wantMessage: "验证码错误",
-		},
-		{
-			name:        "login rejects invalid json",
-			method:      http.MethodPost,
-			path:        "/api/v1/auth/login",
+			path:        "/api/v1/auth/email-login",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",

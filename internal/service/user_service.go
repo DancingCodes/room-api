@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"net/mail"
+	"net/url"
 	"strings"
 
 	"gorm.io/gorm"
@@ -37,52 +38,7 @@ func NewUserService(users *repository.UserRepository, tokens *auth.Service, code
 	return &UserService{users: users, tokens: tokens, codes: codes}
 }
 
-func (s *UserService) Register(email, emailCode, nickname, avatarURL string) (*AuthResult, error) {
-	email = normalizeEmail(email)
-	emailCode = strings.TrimSpace(emailCode)
-	nickname = strings.TrimSpace(nickname)
-	avatarURL = strings.TrimSpace(avatarURL)
-
-	if err := validateUserFields(email, nickname, avatarURL); err != nil {
-		return nil, err
-	}
-	if emailCode == "" {
-		return nil, errors.New("验证码错误")
-	}
-
-	exists, err := s.users.EmailExists(email)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.New("邮箱已存在")
-	}
-
-	exists, err = s.users.NicknameExists(nickname, 0)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.New("昵称已存在")
-	}
-
-	if err := s.codes.Verify(email, EmailPurposeRegister, emailCode); err != nil {
-		return nil, err
-	}
-
-	user := &model.User{
-		Email:     email,
-		Nickname:  nickname,
-		AvatarURL: avatarURL,
-	}
-	if err := s.users.Create(user); err != nil {
-		return nil, err
-	}
-
-	return s.authResult(user)
-}
-
-func (s *UserService) Login(email, emailCode string) (*AuthResult, error) {
+func (s *UserService) EmailLogin(email, emailCode string) (*AuthResult, error) {
 	email = normalizeEmail(email)
 	emailCode = strings.TrimSpace(emailCode)
 	if _, err := mail.ParseAddress(email); err != nil {
@@ -92,15 +48,15 @@ func (s *UserService) Login(email, emailCode string) (*AuthResult, error) {
 		return nil, errors.New("验证码错误")
 	}
 
-	user, err := s.users.FindByEmail(email)
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("邮箱未注册")
-	}
-	if err != nil {
+	if err := s.codes.Verify(email, EmailPurposeLogin, emailCode); err != nil {
 		return nil, err
 	}
 
-	if err := s.codes.Verify(email, EmailPurposeLogin, emailCode); err != nil {
+	user, err := s.users.FindByEmail(email)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		user, err = s.createEmailUser(email)
+	}
+	if err != nil {
 		return nil, err
 	}
 
@@ -121,7 +77,7 @@ func (s *UserService) Me(userID uint64) (*UserDTO, error) {
 
 func (s *UserService) UpdateNickname(userID uint64, nickname string) (*UserDTO, error) {
 	nickname = strings.TrimSpace(nickname)
-	if runeLen(nickname) < 1 || runeLen(nickname) > 8 {
+	if !validNickname(nickname) {
 		return nil, errors.New("参数错误")
 	}
 
@@ -163,6 +119,47 @@ func (s *UserService) UpdateAvatar(userID uint64, avatarURL string) (*UserDTO, e
 	return &dto, nil
 }
 
+func (s *UserService) createEmailUser(email string) (*model.User, error) {
+	nickname, err := s.availableNickname(email)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &model.User{
+		Email:     email,
+		Nickname:  nickname,
+		AvatarURL: defaultAvatarURL(email),
+	}
+	if err := s.users.Create(user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *UserService) availableNickname(email string) (string, error) {
+	base := nicknameBase(email)
+	for i := 0; i < 10000; i++ {
+		candidate := base
+		if i > 0 {
+			suffix := decimalString(i)
+			prefixLen := 8 - runeLen(suffix)
+			if prefixLen < 1 {
+				prefixLen = 1
+			}
+			candidate = takeRunes(base, prefixLen) + suffix
+		}
+
+		exists, err := s.users.NicknameExists(candidate, 0)
+		if err != nil {
+			return "", err
+		}
+		if !exists {
+			return candidate, nil
+		}
+	}
+	return "", errors.New("昵称已存在")
+}
+
 func (s *UserService) authResult(user *model.User) (*AuthResult, error) {
 	token, err := s.tokens.Generate(user.ID)
 	if err != nil {
@@ -194,17 +191,47 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 	}, nil
 }
 
-func validateUserFields(email, nickname, avatarURL string) error {
-	if _, err := mail.ParseAddress(email); err != nil {
-		return errors.New("参数错误")
+func defaultAvatarURL(email string) string {
+	seed := url.QueryEscape(email)
+	return "https://api.dicebear.com/9.x/initials/png?seed=" + seed + "&size=128"
+}
+func validNickname(nickname string) bool {
+	return runeLen(nickname) >= 1 && runeLen(nickname) <= 8
+}
+
+func nicknameBase(email string) string {
+	localPart := email
+	if index := strings.Index(email, "@"); index >= 0 {
+		localPart = email[:index]
 	}
-	if runeLen(nickname) < 1 || runeLen(nickname) > 8 {
-		return errors.New("参数错误")
+	localPart = strings.TrimSpace(localPart)
+	if localPart == "" {
+		localPart = "用户"
 	}
-	if avatarURL == "" {
-		return errors.New("头像不能为空")
+	return takeRunes(localPart, 8)
+}
+
+func takeRunes(value string, limit int) string {
+	runes := []rune(value)
+	if len(runes) <= limit {
+		return value
 	}
-	return nil
+	return string(runes[:limit])
+}
+
+func decimalString(value int) string {
+	if value == 0 {
+		return "0"
+	}
+
+	var digits [20]byte
+	index := len(digits)
+	for value > 0 {
+		index--
+		digits[index] = byte('0' + value%10)
+		value /= 10
+	}
+	return string(digits[index:])
 }
 
 func normalizeEmail(email string) string {

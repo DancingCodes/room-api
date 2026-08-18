@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	EmailPurposeRegister = "register"
-	EmailPurposeLogin    = "login"
+	EmailPurposeLogin = "email_login"
 
 	emailCodeTTL          = 5 * time.Minute
 	emailCodeCooldown     = 60 * time.Second
@@ -32,38 +31,23 @@ func NewEmailCodeService(codes *repository.EmailCodeRepository, users *repositor
 	return &EmailCodeService{codes: codes, users: users, sender: sender}
 }
 
-func (s *EmailCodeService) SendRegisterCode(email string) error {
+func (s *EmailCodeService) SendEmailCode(email string) error {
 	email, err := normalizeEmailForCode(email)
 	if err != nil {
 		return err
 	}
 
-	exists, err := s.users.EmailExists(email)
-	if err != nil {
-		return err
-	}
-	if exists {
-		return errors.New("邮箱已存在")
-	}
-
-	return s.send(email, EmailPurposeRegister, nil)
-}
-
-func (s *EmailCodeService) SendLoginCode(email string) error {
-	email, err := normalizeEmailForCode(email)
-	if err != nil {
-		return err
-	}
-
+	var userID *uint64
 	user, err := s.users.FindByEmail(email)
 	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil
+		if !errors.Is(err, repository.ErrNotFound) {
+			return err
 		}
-		return err
+	} else {
+		userID = &user.ID
 	}
 
-	return s.send(email, EmailPurposeLogin, &user.ID)
+	return s.send(email, EmailPurposeLogin, userID)
 }
 
 func (s *EmailCodeService) Verify(email, purpose, value string) error {

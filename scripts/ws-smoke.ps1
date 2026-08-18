@@ -94,7 +94,7 @@ function Receive-WebSocketText {
 
 if ($Email -eq "" -or $EmailCode -eq "") {
     Write-Host "Email and email code are required for WebSocket smoke test."
-    Write-Host "Use /api/v1/auth/login-code first, then pass -Email and -EmailCode."
+    Write-Host "Use /api/v1/auth/email-code first, then pass -Email and -EmailCode."
     exit 0
 }
 
@@ -102,8 +102,8 @@ Write-Host "Checking health..."
 $health = Invoke-RoomApi -Method GET -Path "/health"
 Write-Host "OK /health => $($health.data.status)"
 
-Write-Host "Logging in with email code..."
-$login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/login" -Body @{
+Write-Host "Logging in or creating user with email code..."
+$login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-login" -Body @{
     email = $Email
     email_code = $EmailCode
 }
