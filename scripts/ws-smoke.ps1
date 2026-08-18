@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
-    [string]$Account = "",
-    [string]$Password = "",
+    [string]$Email = "",
+    [string]$EmailCode = "",
     [int]$TimeoutSeconds = 10
 )
 
@@ -92,9 +92,9 @@ function Receive-WebSocketText {
     return [System.Text.Encoding]::UTF8.GetString($chunks.ToArray())
 }
 
-if ($Account -eq "" -or $Password -eq "") {
-    Write-Host "Account and password are required for WebSocket smoke test."
-    Write-Host "Usage: .\scripts\ws-smoke.ps1 -Account `"your_account`" -Password `"your_password`""
+if ($Email -eq "" -or $EmailCode -eq "") {
+    Write-Host "Email and email code are required for WebSocket smoke test."
+    Write-Host "Use /api/v1/auth/login-code first, then pass -Email and -EmailCode."
     exit 0
 }
 
@@ -102,10 +102,10 @@ Write-Host "Checking health..."
 $health = Invoke-RoomApi -Method GET -Path "/health"
 Write-Host "OK /health => $($health.data.status)"
 
-Write-Host "Logging in..."
+Write-Host "Logging in with email code..."
 $login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/login" -Body @{
-    account = $Account
-    password = $Password
+    email = $Email
+    email_code = $EmailCode
 }
 $token = $login.data.token
 if ($token -eq "") {

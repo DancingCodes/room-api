@@ -58,9 +58,8 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 		{
 			authRoutes.POST("/register-code", userHandler.SendRegisterCode)
 			authRoutes.POST("/register", userHandler.Register)
+			authRoutes.POST("/login-code", userHandler.SendLoginCode)
 			authRoutes.POST("/login", userHandler.Login)
-			authRoutes.POST("/password-reset-code", userHandler.SendPasswordResetCode)
-			authRoutes.POST("/reset-password", userHandler.ResetPassword)
 		}
 
 		api.POST("/uploads/avatar", uploadHandler.UploadAvatar)

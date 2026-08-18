@@ -1,13 +1,10 @@
 CREATE TABLE users (
   id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  account VARCHAR(20) NOT NULL,
   email VARCHAR(128) NOT NULL,
   nickname VARCHAR(8) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
   avatar_url VARCHAR(512) NOT NULL,
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
-  UNIQUE KEY uk_users_account (account),
   UNIQUE KEY uk_users_email (email),
   UNIQUE KEY uk_users_nickname (nickname)
 );

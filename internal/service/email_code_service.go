@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	EmailPurposeRegister      = "register"
-	EmailPurposeResetPassword = "reset_password"
+	EmailPurposeRegister = "register"
+	EmailPurposeLogin    = "login"
 
 	emailCodeTTL          = 5 * time.Minute
 	emailCodeCooldown     = 60 * time.Second
@@ -49,7 +49,7 @@ func (s *EmailCodeService) SendRegisterCode(email string) error {
 	return s.send(email, EmailPurposeRegister, nil)
 }
 
-func (s *EmailCodeService) SendResetPasswordCode(email string) error {
+func (s *EmailCodeService) SendLoginCode(email string) error {
 	email, err := normalizeEmailForCode(email)
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (s *EmailCodeService) SendResetPasswordCode(email string) error {
 		return err
 	}
 
-	return s.send(email, EmailPurposeResetPassword, &user.ID)
+	return s.send(email, EmailPurposeLogin, &user.ID)
 }
 
 func (s *EmailCodeService) Verify(email, purpose, value string) error {

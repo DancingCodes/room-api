@@ -1,7 +1,7 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
-    [string]$Account = "",
-    [string]$Password = ""
+    [string]$Email = "",
+    [string]$EmailCode = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -49,15 +49,16 @@ Write-Host "Checking health..."
 $health = Invoke-RoomApi -Method GET -Path "/health"
 Write-Host "OK /health => $($health.data.status)"
 
-if ($Account -eq "" -or $Password -eq "") {
-    Write-Host "Account or password not provided. Authenticated smoke tests skipped."
+if ($Email -eq "" -or $EmailCode -eq "") {
+    Write-Host "Email or email code not provided. Authenticated smoke tests skipped."
+    Write-Host "Use /api/v1/auth/login-code first, then pass -Email and -EmailCode."
     exit 0
 }
 
-Write-Host "Logging in..."
+Write-Host "Logging in with email code..."
 $login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/login" -Body @{
-    account = $Account
-    password = $Password
+    email = $Email
+    email_code = $EmailCode
 }
 $token = $login.data.token
 if ($token -eq "") {
@@ -67,7 +68,7 @@ Write-Host "OK login => user_id $($login.data.user.id)"
 
 Write-Host "Checking current user..."
 $me = Invoke-RoomApi -Method GET -Path "/api/v1/users/me" -Token $token
-Write-Host "OK /users/me => $($me.data.user.account)"
+Write-Host "OK /users/me => $($me.data.user.email)"
 
 Write-Host "Creating room..."
 $roomResult = Invoke-RoomApi -Method POST -Path "/api/v1/rooms" -Token $token -Body @{

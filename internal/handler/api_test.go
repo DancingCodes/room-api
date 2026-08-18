@@ -28,7 +28,6 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 	{
 		authRoutes.POST("/register", userHandler.Register)
 		authRoutes.POST("/login", userHandler.Login)
-		authRoutes.POST("/reset-password", userHandler.ResetPassword)
 	}
 
 	tests := []struct {
@@ -51,7 +50,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			name:        "register requires email code",
 			method:      http.MethodPost,
 			path:        "/api/v1/auth/register",
-			body:        `{"account":"alex_001","email":"alex@example.com","password":"123456","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
+			body:        `{"email":"alex@example.com","nickname":"Alex","avatar_url":"https://example.com/avatar.png"}`,
 			wantCode:    500,
 			wantMessage: "验证码错误",
 		},
@@ -59,14 +58,6 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 			name:        "login rejects invalid json",
 			method:      http.MethodPost,
 			path:        "/api/v1/auth/login",
-			body:        "{",
-			wantCode:    500,
-			wantMessage: "参数错误",
-		},
-		{
-			name:        "reset password rejects invalid json",
-			method:      http.MethodPost,
-			path:        "/api/v1/auth/reset-password",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",

@@ -3,18 +3,14 @@ package service
 import (
 	"errors"
 	"net/mail"
-	"regexp"
 	"strings"
 
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
 	"room-api/internal/auth"
 	"room-api/internal/model"
 	"room-api/internal/repository"
 )
-
-var accountPattern = regexp.MustCompile(`^[A-Za-z0-9_]{4,20}$`)
 
 type UserService struct {
 	users  *repository.UserRepository
@@ -24,7 +20,6 @@ type UserService struct {
 
 type UserDTO struct {
 	ID            uint64  `json:"id"`
-	Account       string  `json:"account"`
 	Email         string  `json:"email"`
 	Nickname      string  `json:"nickname"`
 	AvatarURL     string  `json:"avatar_url"`
@@ -42,29 +37,20 @@ func NewUserService(users *repository.UserRepository, tokens *auth.Service, code
 	return &UserService{users: users, tokens: tokens, codes: codes}
 }
 
-func (s *UserService) Register(account, email, emailCode, password, nickname, avatarURL string) (*AuthResult, error) {
-	account = strings.TrimSpace(account)
+func (s *UserService) Register(email, emailCode, nickname, avatarURL string) (*AuthResult, error) {
 	email = normalizeEmail(email)
 	emailCode = strings.TrimSpace(emailCode)
 	nickname = strings.TrimSpace(nickname)
 	avatarURL = strings.TrimSpace(avatarURL)
 
-	if err := validateUserFields(account, email, password, nickname, avatarURL); err != nil {
+	if err := validateUserFields(email, nickname, avatarURL); err != nil {
 		return nil, err
 	}
 	if emailCode == "" {
 		return nil, errors.New("验证码错误")
 	}
 
-	exists, err := s.users.AccountExists(account)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.New("账号已存在")
-	}
-
-	exists, err = s.users.EmailExists(email)
+	exists, err := s.users.EmailExists(email)
 	if err != nil {
 		return nil, err
 	}
@@ -84,17 +70,10 @@ func (s *UserService) Register(account, email, emailCode, password, nickname, av
 		return nil, err
 	}
 
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, err
-	}
-
 	user := &model.User{
-		Account:      account,
-		Email:        email,
-		Nickname:     nickname,
-		PasswordHash: string(passwordHash),
-		AvatarURL:    avatarURL,
+		Email:     email,
+		Nickname:  nickname,
+		AvatarURL: avatarURL,
 	}
 	if err := s.users.Create(user); err != nil {
 		return nil, err
@@ -103,22 +82,26 @@ func (s *UserService) Register(account, email, emailCode, password, nickname, av
 	return s.authResult(user)
 }
 
-func (s *UserService) Login(account, password string) (*AuthResult, error) {
-	account = strings.TrimSpace(account)
-	if account == "" || password == "" {
+func (s *UserService) Login(email, emailCode string) (*AuthResult, error) {
+	email = normalizeEmail(email)
+	emailCode = strings.TrimSpace(emailCode)
+	if _, err := mail.ParseAddress(email); err != nil {
 		return nil, errors.New("参数错误")
 	}
+	if emailCode == "" {
+		return nil, errors.New("验证码错误")
+	}
 
-	user, err := s.users.FindByAccount(account)
+	user, err := s.users.FindByEmail(email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, errors.New("账号或密码错误")
+		return nil, errors.New("邮箱未注册")
 	}
 	if err != nil {
 		return nil, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, errors.New("账号或密码错误")
+	if err := s.codes.Verify(email, EmailPurposeLogin, emailCode); err != nil {
+		return nil, err
 	}
 
 	return s.authResult(user)
@@ -180,35 +163,6 @@ func (s *UserService) UpdateAvatar(userID uint64, avatarURL string) (*UserDTO, e
 	return &dto, nil
 }
 
-func (s *UserService) ResetPassword(email, emailCode, newPassword string) error {
-	email = normalizeEmail(email)
-	emailCode = strings.TrimSpace(emailCode)
-	if _, err := mail.ParseAddress(email); err != nil {
-		return errors.New("参数错误")
-	}
-	if emailCode == "" {
-		return errors.New("验证码错误")
-	}
-	if len(newPassword) < 6 || len(newPassword) > 20 {
-		return errors.New("参数错误")
-	}
-
-	user, err := s.users.FindByEmail(email)
-	if err != nil {
-		return err
-	}
-
-	if err := s.codes.Verify(email, EmailPurposeResetPassword, emailCode); err != nil {
-		return err
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	return s.users.UpdatePassword(user.ID, string(passwordHash))
-}
-
 func (s *UserService) authResult(user *model.User) (*AuthResult, error) {
 	token, err := s.tokens.Generate(user.ID)
 	if err != nil {
@@ -231,7 +185,6 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 
 	return UserDTO{
 		ID:            user.ID,
-		Account:       user.Account,
 		Email:         user.Email,
 		Nickname:      user.Nickname,
 		AvatarURL:     user.AvatarURL,
@@ -241,14 +194,8 @@ func (s *UserService) toDTO(user *model.User) (UserDTO, error) {
 	}, nil
 }
 
-func validateUserFields(account, email, password, nickname, avatarURL string) error {
-	if !accountPattern.MatchString(account) {
-		return errors.New("参数错误")
-	}
+func validateUserFields(email, nickname, avatarURL string) error {
 	if _, err := mail.ParseAddress(email); err != nil {
-		return errors.New("参数错误")
-	}
-	if len(password) < 6 || len(password) > 20 {
 		return errors.New("参数错误")
 	}
 	if runeLen(nickname) < 1 || runeLen(nickname) > 8 {

@@ -7,7 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const tokenTTL = 7 * 24 * time.Hour
+const tokenYears = 100
 
 type Claims struct {
 	UserID uint64 `json:"user_id"`
@@ -27,7 +27,7 @@ func (s *Service) Generate(userID uint64) (string, error) {
 	claims := Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(now.Add(tokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(now.AddDate(tokenYears, 0, 0)),
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}

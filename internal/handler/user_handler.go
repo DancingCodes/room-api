@@ -18,17 +18,15 @@ func NewUserHandler(users *service.UserService, codes *service.EmailCodeService)
 }
 
 type registerRequest struct {
-	Account   string `json:"account"`
 	Email     string `json:"email"`
 	EmailCode string `json:"email_code"`
-	Password  string `json:"password"`
 	Nickname  string `json:"nickname"`
 	AvatarURL string `json:"avatar_url"`
 }
 
 type loginRequest struct {
-	Account  string `json:"account"`
-	Password string `json:"password"`
+	Email     string `json:"email"`
+	EmailCode string `json:"email_code"`
 }
 
 type updateMeRequest struct {
@@ -39,12 +37,6 @@ type emailCodeRequest struct {
 	Email string `json:"email"`
 }
 
-type resetPasswordRequest struct {
-	Email       string `json:"email"`
-	EmailCode   string `json:"email_code"`
-	NewPassword string `json:"new_password"`
-}
-
 func (h *UserHandler) SendRegisterCode(c *gin.Context) {
 	var req emailCodeRequest
 	if !bindUserJSON(c, &req) {
@@ -52,6 +44,20 @@ func (h *UserHandler) SendRegisterCode(c *gin.Context) {
 	}
 
 	if err := h.codes.SendRegisterCode(req.Email); err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	response.OK(c, nil)
+}
+
+func (h *UserHandler) SendLoginCode(c *gin.Context) {
+	var req emailCodeRequest
+	if !bindUserJSON(c, &req) {
+		return
+	}
+
+	if err := h.codes.SendLoginCode(req.Email); err != nil {
 		response.Error(c, 500, err.Error())
 		return
 	}
@@ -69,7 +75,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	result, err := h.users.Register(req.Account, req.Email, req.EmailCode, req.Password, req.Nickname, req.AvatarURL)
+	result, err := h.users.Register(req.Email, req.EmailCode, req.Nickname, req.AvatarURL)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return
@@ -84,41 +90,13 @@ func (h *UserHandler) Login(c *gin.Context) {
 		return
 	}
 
-	result, err := h.users.Login(req.Account, req.Password)
+	result, err := h.users.Login(req.Email, req.EmailCode)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return
 	}
 
 	response.OK(c, result)
-}
-
-func (h *UserHandler) SendPasswordResetCode(c *gin.Context) {
-	var req emailCodeRequest
-	if !bindUserJSON(c, &req) {
-		return
-	}
-
-	if err := h.codes.SendResetPasswordCode(req.Email); err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-
-	response.OK(c, nil)
-}
-
-func (h *UserHandler) ResetPassword(c *gin.Context) {
-	var req resetPasswordRequest
-	if !bindUserJSON(c, &req) {
-		return
-	}
-
-	if err := h.users.ResetPassword(req.Email, req.EmailCode, req.NewPassword); err != nil {
-		response.Error(c, 500, err.Error())
-		return
-	}
-
-	response.OK(c, nil)
 }
 
 func (h *UserHandler) Me(c *gin.Context) {

@@ -1,8 +1,6 @@
 param(
     [string]$BaseUrl = "http://127.0.0.1:8080",
-    [string]$Account = "",
     [string]$Email = "",
-    [string]$Password = "123456",
     [string]$Nickname = "",
     [string]$AvatarUrl = "https://example.com/avatar.png"
 )
@@ -41,18 +39,18 @@ function Invoke-RoomApi {
     return $response
 }
 
-if ($Account -eq "" -or $Email -eq "") {
-    Write-Host "Account and email are required."
-    Write-Host "Usage: .\scripts\email-smoke.ps1 -Account `"roomtest01`" -Email `"you@example.com`""
+if ($Email -eq "") {
+    Write-Host "Email is required."
+    Write-Host "Usage: .\scripts\email-smoke.ps1 -Email `"you@example.com`""
     exit 0
 }
 
 if ($Nickname -eq "") {
-    $suffix = $Account
-    if ($suffix.Length -gt 5) {
-        $suffix = $suffix.Substring($suffix.Length - 5)
+    $localPart = $Email.Split('@')[0]
+    if ($localPart.Length -gt 7) {
+        $localPart = $localPart.Substring(0, 7)
     }
-    $Nickname = "R$suffix"
+    $Nickname = "R$localPart"
     if ($Nickname.Length -gt 8) {
         $Nickname = $Nickname.Substring(0, 8)
     }
@@ -68,26 +66,35 @@ Invoke-RoomApi -Method POST -Path "/api/v1/auth/register-code" -Body @{
 } | Out-Null
 Write-Host "OK register code sent"
 
-$code = Read-Host "Enter the 6-digit email code"
-if ($code -eq "") {
-    throw "Email code is required."
+$registerCode = Read-Host "Enter the 6-digit register email code"
+if ($registerCode -eq "") {
+    throw "Register email code is required."
 }
 
 Write-Host "Registering user..."
 $register = Invoke-RoomApi -Method POST -Path "/api/v1/auth/register" -Body @{
-    account = $Account
     email = $Email
-    email_code = $code
-    password = $Password
+    email_code = $registerCode
     nickname = $Nickname
     avatar_url = $AvatarUrl
 }
 Write-Host "OK register => user_id $($register.data.user.id)"
 
+Write-Host "Sending login email code to $Email..."
+Invoke-RoomApi -Method POST -Path "/api/v1/auth/login-code" -Body @{
+    email = $Email
+} | Out-Null
+Write-Host "OK login code sent"
+
+$loginCode = Read-Host "Enter the 6-digit login email code"
+if ($loginCode -eq "") {
+    throw "Login email code is required."
+}
+
 Write-Host "Logging in..."
 $login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/login" -Body @{
-    account = $Account
-    password = $Password
+    email = $Email
+    email_code = $loginCode
 }
 if ($login.data.token -eq "") {
     throw "Login succeeded but token is empty."
