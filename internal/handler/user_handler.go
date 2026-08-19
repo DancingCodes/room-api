@@ -23,7 +23,8 @@ type emailLoginRequest struct {
 }
 
 type updateMeRequest struct {
-	Nickname string `json:"nickname"`
+	Nickname  *string `json:"nickname"`
+	AvatarURL *string `json:"avatar_url"`
 }
 
 type emailCodeRequest struct {
@@ -85,7 +86,7 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 		return
 	}
 
-	user, err := h.users.UpdateNickname(userID, req.Nickname)
+	user, err := h.users.UpdateProfile(userID, req.Nickname, req.AvatarURL)
 	if err != nil {
 		response.Error(c, 500, err.Error())
 		return

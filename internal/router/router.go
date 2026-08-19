@@ -45,7 +45,7 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	userHandler := handler.NewUserHandler(userSvc, emailCodeSvc)
 	roomHandler := handler.NewRoomHandler(roomSvc, hub)
 	messageHandler := handler.NewMessageHandler(messageSvc, hub)
-	uploadHandler := handler.NewUploadHandler(uploadSvc, userSvc)
+	uploadHandler := handler.NewUploadHandler(uploadSvc)
 	wsHandler := handler.NewWSHandler(jwtSvc, roomSvc, hub)
 
 	r.GET("/health", func(c *gin.Context) {
@@ -64,7 +64,11 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 		{
 			users.GET("/me", userHandler.Me)
 			users.PATCH("/me", userHandler.UpdateMe)
-			users.POST("/me/avatar", uploadHandler.UpdateMyAvatar)
+		}
+
+		uploads := api.Group("/uploads", middleware.Auth(jwtSvc))
+		{
+			uploads.POST("/image", uploadHandler.UploadImage)
 		}
 
 		rooms := api.Group("/rooms", middleware.Auth(jwtSvc))

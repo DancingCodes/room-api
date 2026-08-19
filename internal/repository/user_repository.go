@@ -72,15 +72,8 @@ func (r *UserRepository) NicknameExists(nickname string, excludeUserID uint64) (
 	return count > 0, nil
 }
 
-func (r *UserRepository) UpdateNickname(userID uint64, nickname string) (*model.User, error) {
-	if err := r.db.Model(&model.User{}).Where("id = ?", userID).Update("nickname", nickname).Error; err != nil {
-		return nil, err
-	}
-	return r.FindByID(userID)
-}
-
-func (r *UserRepository) UpdateAvatar(userID uint64, avatarURL string) (*model.User, error) {
-	if err := r.db.Model(&model.User{}).Where("id = ?", userID).Update("avatar_url", avatarURL).Error; err != nil {
+func (r *UserRepository) UpdateProfile(userID uint64, updates map[string]any) (*model.User, error) {
+	if err := r.db.Model(&model.User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
 		return nil, err
 	}
 	return r.FindByID(userID)

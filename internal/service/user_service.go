@@ -75,39 +75,40 @@ func (s *UserService) Me(userID uint64) (*UserDTO, error) {
 	return &dto, nil
 }
 
-func (s *UserService) UpdateNickname(userID uint64, nickname string) (*UserDTO, error) {
-	nickname = strings.TrimSpace(nickname)
-	if !validNickname(nickname) {
+func (s *UserService) UpdateProfile(userID uint64, nickname, avatarURL *string) (*UserDTO, error) {
+	updates := map[string]any{}
+
+	if nickname != nil {
+		value := strings.TrimSpace(*nickname)
+		if !validNickname(value) {
+			return nil, errors.New("参数错误")
+		}
+
+		exists, err := s.users.NicknameExists(value, userID)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			return nil, errors.New("昵称已存在")
+		}
+
+		updates["nickname"] = value
+	}
+
+	if avatarURL != nil {
+		value := strings.TrimSpace(*avatarURL)
+		if !validAvatarURL(value) {
+			return nil, errors.New("参数错误")
+		}
+
+		updates["avatar_url"] = value
+	}
+
+	if len(updates) == 0 {
 		return nil, errors.New("参数错误")
 	}
 
-	exists, err := s.users.NicknameExists(nickname, userID)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.New("昵称已存在")
-	}
-
-	user, err := s.users.UpdateNickname(userID, nickname)
-	if err != nil {
-		return nil, err
-	}
-
-	dto, err := s.toDTO(user)
-	if err != nil {
-		return nil, err
-	}
-	return &dto, nil
-}
-
-func (s *UserService) UpdateAvatar(userID uint64, avatarURL string) (*UserDTO, error) {
-	avatarURL = strings.TrimSpace(avatarURL)
-	if avatarURL == "" {
-		return nil, errors.New("头像不能为空")
-	}
-
-	user, err := s.users.UpdateAvatar(userID, avatarURL)
+	user, err := s.users.UpdateProfile(userID, updates)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +198,14 @@ func defaultAvatarURL(email string) string {
 }
 func validNickname(nickname string) bool {
 	return runeLen(nickname) >= 1 && runeLen(nickname) <= 8
+}
+
+func validAvatarURL(avatarURL string) bool {
+	parsed, err := url.ParseRequestURI(avatarURL)
+	if err != nil {
+		return false
+	}
+	return (parsed.Scheme == "http" || parsed.Scheme == "https") && parsed.Host != ""
 }
 
 func nicknameBase(email string) string {
