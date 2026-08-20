@@ -39,13 +39,14 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	roomSvc := service.NewRoomService(roomRepo, userRepo)
 	messageSvc := service.NewMessageService(messageRepo, roomRepo, userRepo)
 	appVersionSvc := service.NewAppVersionService(appVersionRepo)
+	voiceTokenSvc := service.NewAgoraTokenService(cfg.AgoraAppID, cfg.AgoraAppCertificate)
 	uploadSvc, err := service.NewUploadService(cfg)
 	if err != nil {
 		return nil, err
 	}
 	hub := realtime.NewHub()
 	userHandler := handler.NewUserHandler(userSvc, emailCodeSvc)
-	roomHandler := handler.NewRoomHandler(roomSvc, hub)
+	roomHandler := handler.NewRoomHandler(roomSvc, voiceTokenSvc, hub)
 	messageHandler := handler.NewMessageHandler(messageSvc, hub)
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
 	wsHandler := handler.NewWSHandler(jwtSvc, roomSvc, hub)
@@ -81,6 +82,7 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 			rooms.GET("", roomHandler.List)
 			rooms.POST("", roomHandler.Create)
 			rooms.GET("/:room_id", roomHandler.Detail)
+			rooms.GET("/:room_id/rtc-token", roomHandler.RTCToken)
 			rooms.POST("/:room_id/join", roomHandler.Join)
 			rooms.POST("/:room_id/leave", roomHandler.Leave)
 			rooms.PATCH("/:room_id/mic", roomHandler.UpdateMicStatus)

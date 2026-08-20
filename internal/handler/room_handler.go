@@ -12,12 +12,13 @@ import (
 )
 
 type RoomHandler struct {
-	rooms *service.RoomService
-	hub   *realtime.Hub
+	rooms       *service.RoomService
+	voiceTokens *service.AgoraTokenService
+	hub         *realtime.Hub
 }
 
-func NewRoomHandler(rooms *service.RoomService, hub *realtime.Hub) *RoomHandler {
-	return &RoomHandler{rooms: rooms, hub: hub}
+func NewRoomHandler(rooms *service.RoomService, voiceTokens *service.AgoraTokenService, hub *realtime.Hub) *RoomHandler {
+	return &RoomHandler{rooms: rooms, voiceTokens: voiceTokens, hub: hub}
 }
 
 type createRoomRequest struct {
@@ -76,6 +77,25 @@ func (h *RoomHandler) Detail(c *gin.Context) {
 	response.OK(c, result)
 }
 
+func (h *RoomHandler) RTCToken(c *gin.Context) {
+	userID, roomID, ok := roomCurrentUserAndRoomID(c)
+	if !ok {
+		return
+	}
+
+	if _, err := h.rooms.Detail(userID, roomID); err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	result, err := h.voiceTokens.Issue(roomID, userID)
+	if err != nil {
+		response.Error(c, 500, err.Error())
+		return
+	}
+
+	response.OK(c, result)
+}
 func (h *RoomHandler) Join(c *gin.Context) {
 	userID, roomID, ok := roomCurrentUserAndRoomID(c)
 	if !ok {

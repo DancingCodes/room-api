@@ -18,6 +18,8 @@ type Config struct {
 	COSBaseURL           string
 	COSPathPrefix        string
 	COSCDNURL            string
+	AgoraAppID           string
+	AgoraAppCertificate  string
 }
 
 func Load() Config {
@@ -36,6 +38,8 @@ func Load() Config {
 		COSBaseURL:           getEnv("COS_BASE_URL"),
 		COSPathPrefix:        getEnv("COS_PATH_PREFIX"),
 		COSCDNURL:            getEnv("COS_CDN_URL"),
+		AgoraAppID:           getEnv("AGORA_APP_ID"),
+		AgoraAppCertificate:  getEnv("AGORA_APP_CERTIFICATE"),
 	}
 }
 

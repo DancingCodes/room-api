@@ -110,7 +110,7 @@ func TestWebSocketAuthFailureReturnsHTTPUnauthorized(t *testing.T) {
 func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 	router := testRouter()
 	hub := realtime.NewHub()
-	roomHandler := NewRoomHandler(nil, hub)
+	roomHandler := NewRoomHandler(nil, nil, hub)
 	messageHandler := NewMessageHandler(nil, hub)
 
 	authed := router.Group("/api/v1", withTestUser(1))
