@@ -43,7 +43,7 @@ func (h *WSHandler) ConnectRoom(c *gin.Context) {
 
 	claims, ok := h.parseClaims(c)
 	if !ok {
-		response.Error(c, 401, "未登录")
+		response.ErrorWithStatus(c, http.StatusUnauthorized, 401, "未登录")
 		return
 	}
 

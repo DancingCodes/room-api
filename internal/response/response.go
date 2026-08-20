@@ -21,3 +21,11 @@ func Error(c *gin.Context, code int, message string) {
 		"data":    nil,
 	})
 }
+
+func ErrorWithStatus(c *gin.Context, status int, code int, message string) {
+	c.JSON(status, gin.H{
+		"code":    code,
+		"message": message,
+		"data":    nil,
+	})
+}

@@ -96,6 +96,17 @@ func TestProtectedAPIsRequireAuthorization(t *testing.T) {
 	}
 }
 
+func TestWebSocketAuthFailureReturnsHTTPUnauthorized(t *testing.T) {
+	router := testRouter()
+	jwtSvc := auth.NewService("test-secret")
+	wsHandler := NewWSHandler(jwtSvc, nil, realtime.NewHub())
+
+	router.GET("/api/v1/ws/rooms/:room_id", wsHandler.ConnectRoom)
+
+	response := performJSONRequest(router, http.MethodGet, "/api/v1/ws/rooms/1", "", nil)
+	assertAPIResponseWithHTTPStatus(t, response, http.StatusUnauthorized, 401, "未登录")
+}
+
 func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 	router := testRouter()
 	hub := realtime.NewHub()
@@ -179,8 +190,14 @@ func performJSONRequest(router http.Handler, method, path, body string, headers 
 func assertAPIResponse(t *testing.T, response *httptest.ResponseRecorder, wantCode int, wantMessage string) {
 	t.Helper()
 
-	if response.Code != http.StatusOK {
-		t.Fatalf("HTTP status = %d, want %d, body = %s", response.Code, http.StatusOK, response.Body.String())
+	assertAPIResponseWithHTTPStatus(t, response, http.StatusOK, wantCode, wantMessage)
+}
+
+func assertAPIResponseWithHTTPStatus(t *testing.T, response *httptest.ResponseRecorder, wantHTTPStatus int, wantCode int, wantMessage string) {
+	t.Helper()
+
+	if response.Code != wantHTTPStatus {
+		t.Fatalf("HTTP status = %d, want %d, body = %s", response.Code, wantHTTPStatus, response.Body.String())
 	}
 
 	var body apiResponse
