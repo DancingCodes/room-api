@@ -23,8 +23,8 @@ type emailLoginRequest struct {
 }
 
 type updateMeRequest struct {
-	Nickname  *string `json:"nickname"`
-	AvatarURL *string `json:"avatar_url"`
+	Nickname  string `json:"nickname"`
+	AvatarURL string `json:"avatar_url"`
 }
 
 type emailCodeRequest struct {

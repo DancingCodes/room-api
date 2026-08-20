@@ -75,37 +75,24 @@ func (s *UserService) Me(userID uint64) (*UserDTO, error) {
 	return &dto, nil
 }
 
-func (s *UserService) UpdateProfile(userID uint64, nickname, avatarURL *string) (*UserDTO, error) {
-	updates := map[string]any{}
-
-	if nickname != nil {
-		value := strings.TrimSpace(*nickname)
-		if !validNickname(value) {
-			return nil, errors.New("参数错误")
-		}
-
-		exists, err := s.users.NicknameExists(value, userID)
-		if err != nil {
-			return nil, err
-		}
-		if exists {
-			return nil, errors.New("昵称已存在")
-		}
-
-		updates["nickname"] = value
-	}
-
-	if avatarURL != nil {
-		value := strings.TrimSpace(*avatarURL)
-		if !validAvatarURL(value) {
-			return nil, errors.New("参数错误")
-		}
-
-		updates["avatar_url"] = value
-	}
-
-	if len(updates) == 0 {
+func (s *UserService) UpdateProfile(userID uint64, nickname, avatarURL string) (*UserDTO, error) {
+	nickname = strings.TrimSpace(nickname)
+	avatarURL = strings.TrimSpace(avatarURL)
+	if !validNickname(nickname) || !validAvatarURL(avatarURL) {
 		return nil, errors.New("参数错误")
+	}
+
+	exists, err := s.users.NicknameExists(nickname, userID)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, errors.New("昵称已存在")
+	}
+
+	updates := map[string]any{
+		"nickname":   nickname,
+		"avatar_url": avatarURL,
 	}
 
 	user, err := s.users.UpdateProfile(userID, updates)
