@@ -50,3 +50,15 @@ CREATE TABLE messages (
   created_at DATETIME NOT NULL,
   KEY idx_messages_room_id_id (room_id, id)
 );
+CREATE TABLE app_versions (
+  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  version_code BIGINT UNSIGNED NOT NULL,
+  apk_url VARCHAR(512) NOT NULL,
+  apk_sha256 CHAR(64) NOT NULL,
+  release_notes TEXT NOT NULL,
+  is_published TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  UNIQUE KEY uk_app_versions_version_code (version_code),
+  KEY idx_app_versions_published_version (is_published, version_code)
+);

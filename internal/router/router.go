@@ -29,6 +29,7 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	roomRepo := repository.NewRoomRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 	emailCodeRepo := repository.NewEmailCodeRepository(db)
+	appVersionRepo := repository.NewAppVersionRepository(db)
 	mailSender, err := service.NewTencentSESMailSender(cfg)
 	if err != nil {
 		return nil, err
@@ -37,6 +38,7 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	userSvc := service.NewUserService(userRepo, jwtSvc, emailCodeSvc)
 	roomSvc := service.NewRoomService(roomRepo, userRepo)
 	messageSvc := service.NewMessageService(messageRepo, roomRepo, userRepo)
+	appVersionSvc := service.NewAppVersionService(appVersionRepo)
 	uploadSvc, err := service.NewUploadService(cfg)
 	if err != nil {
 		return nil, err
@@ -47,6 +49,7 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	messageHandler := handler.NewMessageHandler(messageSvc, hub)
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
 	wsHandler := handler.NewWSHandler(jwtSvc, roomSvc, hub)
+	appVersionHandler := handler.NewAppVersionHandler(appVersionSvc)
 
 	r.GET("/health", func(c *gin.Context) {
 		response.OK(c, gin.H{"status": "up"})
@@ -54,6 +57,8 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 
 	api := r.Group("/api/v1")
 	{
+		api.GET("/app-version/latest", appVersionHandler.Latest)
+
 		authRoutes := api.Group("/auth")
 		{
 			authRoutes.POST("/email-code", userHandler.SendEmailCode)
