@@ -31,6 +31,7 @@ type SaveAppVersionInput struct {
 	VersionCode  uint64 `json:"version_code"`
 	APKURL       string `json:"apk_url"`
 	ReleaseNotes string `json:"release_notes"`
+	IsPublished  bool   `json:"is_published"`
 }
 
 type AppVersionService struct {
@@ -78,7 +79,7 @@ func (s *AppVersionService) CreateAdmin(input SaveAppVersionInput) (*AdminAppVer
 	if err := validateAppVersionInput(input); err != nil {
 		return nil, err
 	}
-	version, err := s.versions.Create(input.VersionCode, strings.TrimSpace(input.APKURL), strings.TrimSpace(input.ReleaseNotes))
+	version, err := s.versions.Create(input.VersionCode, strings.TrimSpace(input.APKURL), strings.TrimSpace(input.ReleaseNotes), input.IsPublished)
 	if err != nil {
 		return nil, err
 	}

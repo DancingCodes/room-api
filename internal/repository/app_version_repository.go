@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"room-api/internal/model"
 )
@@ -29,16 +30,36 @@ func (r *AppVersionRepository) FindByID(id uint64) (*model.AppVersion, error) {
 	return &version, nil
 }
 
-func (r *AppVersionRepository) Create(versionCode uint64, apkURL, releaseNotes string) (*model.AppVersion, error) {
-	now := time.Now()
-	version := model.AppVersion{
-		VersionCode:  versionCode,
-		APKURL:       apkURL,
-		ReleaseNotes: releaseNotes,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-	if err := r.db.Create(&version).Error; err != nil {
+func (r *AppVersionRepository) Create(versionCode uint64, apkURL, releaseNotes string, isPublished bool) (*model.AppVersion, error) {
+	var version model.AppVersion
+	err := r.db.Transaction(func(tx *gorm.DB) error {
+		var latest model.AppVersion
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Order("version_code DESC").First(&latest).Error
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err == nil && versionCode <= latest.VersionCode {
+			return errors.New("版本号必须大于已有最大版本号")
+		}
+
+		if isPublished {
+			if err := tx.Model(&model.AppVersion{}).Where("is_published = ?", true).Update("is_published", false).Error; err != nil {
+				return err
+			}
+		}
+
+		now := time.Now()
+		version = model.AppVersion{
+			VersionCode:  versionCode,
+			APKURL:       apkURL,
+			ReleaseNotes: releaseNotes,
+			IsPublished:  isPublished,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+		}
+		return tx.Create(&version).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &version, nil
