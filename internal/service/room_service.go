@@ -51,6 +51,35 @@ type RoomListDTO struct {
 	PageSize int       `json:"page_size"`
 }
 
+type AdminRoomDTO struct {
+	ID             uint64 `json:"id"`
+	Name           string `json:"name"`
+	OwnerID        uint64 `json:"owner_id"`
+	OwnerNickname  string `json:"owner_nickname"`
+	OwnerEmail     string `json:"owner_email"`
+	CurrentMembers int64  `json:"current_members"`
+	MaxMembers     uint8  `json:"max_members"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
+}
+
+type AdminRoomListDTO struct {
+	List     []AdminRoomDTO `json:"list"`
+	Total    int64          `json:"total"`
+	Page     int            `json:"page"`
+	PageSize int            `json:"page_size"`
+}
+
+type AdminRoomDetailDTO struct {
+	Room    AdminRoomDTO    `json:"room"`
+	Members []RoomMemberDTO `json:"members"`
+}
+
+type RoomStatsDTO struct {
+	ActiveRooms    int64 `json:"active_rooms"`
+	CurrentMembers int64 `json:"current_members"`
+}
+
 type LeaveResultDTO struct {
 	Left              bool
 	DeletedRoom       bool
@@ -84,6 +113,68 @@ func (s *RoomService) List(page, pageSize int) (*RoomListDTO, error) {
 		Page:     page,
 		PageSize: pageSize,
 	}, nil
+}
+
+func (s *RoomService) AdminList(page, pageSize int) (*AdminRoomListDTO, error) {
+	page, pageSize = normalizePage(page, pageSize)
+	rooms, total, err := s.rooms.List(page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+
+	ownerIDs := make([]uint64, 0, len(rooms))
+	for _, item := range rooms {
+		ownerIDs = append(ownerIDs, item.Room.OwnerID)
+	}
+	owners, err := s.users.FindByIDs(ownerIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	list := make([]AdminRoomDTO, 0, len(rooms))
+	for _, item := range rooms {
+		owner, ok := owners[item.Room.OwnerID]
+		if !ok {
+			return nil, gorm.ErrRecordNotFound
+		}
+		list = append(list, adminRoomDTO(&item.Room, item.CurrentCount, owner.Nickname, owner.Email))
+	}
+
+	return &AdminRoomListDTO{List: list, Total: total, Page: page, PageSize: pageSize}, nil
+}
+
+func (s *RoomService) AdminDetail(roomID uint64) (*AdminRoomDetailDTO, error) {
+	room, members, err := s.rooms.Detail(roomID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("房间不存在")
+		}
+		return nil, err
+	}
+	owner, err := s.users.FindByID(room.OwnerID)
+	if err != nil {
+		return nil, err
+	}
+	memberDTOs, err := s.memberDTOs(members, room.OwnerID)
+	if err != nil {
+		return nil, err
+	}
+	return &AdminRoomDetailDTO{
+		Room:    adminRoomDTO(room, int64(len(members)), owner.Nickname, owner.Email),
+		Members: memberDTOs,
+	}, nil
+}
+
+func (s *RoomService) Stats() (*RoomStatsDTO, error) {
+	activeRooms, err := s.rooms.CountRooms()
+	if err != nil {
+		return nil, err
+	}
+	currentMembers, err := s.rooms.CountAllMembers()
+	if err != nil {
+		return nil, err
+	}
+	return &RoomStatsDTO{ActiveRooms: activeRooms, CurrentMembers: currentMembers}, nil
 }
 
 func (s *RoomService) Create(userID uint64, maxMembers uint8) (*RoomDetailDTO, error) {
@@ -199,6 +290,20 @@ func roomDTO(room *model.Room, currentMembers int64) RoomDTO {
 		CurrentMembers: currentMembers,
 		MaxMembers:     room.MaxMembers,
 		CreatedAt:      formatTime(room.CreatedAt),
+	}
+}
+
+func adminRoomDTO(room *model.Room, currentMembers int64, ownerNickname, ownerEmail string) AdminRoomDTO {
+	return AdminRoomDTO{
+		ID:             room.ID,
+		Name:           room.Name,
+		OwnerID:        room.OwnerID,
+		OwnerNickname:  ownerNickname,
+		OwnerEmail:     ownerEmail,
+		CurrentMembers: currentMembers,
+		MaxMembers:     room.MaxMembers,
+		CreatedAt:      formatTime(room.CreatedAt),
+		UpdatedAt:      formatTime(room.UpdatedAt),
 	}
 }
 

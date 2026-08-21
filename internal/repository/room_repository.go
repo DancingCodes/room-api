@@ -312,3 +312,19 @@ func (r *RoomRepository) CountMembers(roomID uint64) (int64, error) {
 	}
 	return count, nil
 }
+
+func (r *RoomRepository) CountRooms() (int64, error) {
+	var count int64
+	if err := r.db.Model(&model.Room{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *RoomRepository) CountAllMembers() (int64, error) {
+	var count int64
+	if err := r.db.Model(&model.RoomMember{}).Count(&count).Error; err != nil {
+		return 0, err
+	}
+	return count, nil
+}

@@ -24,7 +24,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 	router := testRouter()
 	userHandler := NewUserHandler(nil, nil)
 
-	authRoutes := router.Group("/api/v1/auth")
+	authRoutes := router.Group("/api/v1/app/auth")
 	{
 		authRoutes.POST("/email-code", userHandler.SendEmailCode)
 		authRoutes.POST("/email-login", userHandler.EmailLogin)
@@ -41,7 +41,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 		{
 			name:        "email code rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/auth/email-code",
+			path:        "/api/v1/app/auth/email-code",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",
@@ -49,7 +49,7 @@ func TestAuthAPIInvalidRequests(t *testing.T) {
 		{
 			name:        "email login rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/auth/email-login",
+			path:        "/api/v1/app/auth/email-login",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",
@@ -69,7 +69,7 @@ func TestProtectedAPIsRequireAuthorization(t *testing.T) {
 	jwtSvc := auth.NewService("test-secret")
 	userHandler := NewUserHandler(nil, nil)
 
-	users := router.Group("/api/v1/users", middleware.Auth(jwtSvc))
+	users := router.Group("/api/v1/app/users", middleware.Auth(jwtSvc))
 	{
 		users.GET("/me", userHandler.Me)
 	}
@@ -90,7 +90,7 @@ func TestProtectedAPIsRequireAuthorization(t *testing.T) {
 				headers["Authorization"] = tt.header
 			}
 
-			response := performJSONRequest(router, http.MethodGet, "/api/v1/users/me", "", headers)
+			response := performJSONRequest(router, http.MethodGet, "/api/v1/app/users/me", "", headers)
 			assertAPIResponse(t, response, 401, "未登录")
 		})
 	}
@@ -101,9 +101,9 @@ func TestWebSocketAuthFailureReturnsHTTPUnauthorized(t *testing.T) {
 	jwtSvc := auth.NewService("test-secret")
 	wsHandler := NewWSHandler(jwtSvc, nil, realtime.NewHub())
 
-	router.GET("/api/v1/ws/rooms/:room_id", wsHandler.ConnectRoom)
+	router.GET("/api/v1/app/ws/rooms/:room_id", wsHandler.ConnectRoom)
 
-	response := performJSONRequest(router, http.MethodGet, "/api/v1/ws/rooms/1", "", nil)
+	response := performJSONRequest(router, http.MethodGet, "/api/v1/app/ws/rooms/1", "", nil)
 	assertAPIResponseWithHTTPStatus(t, response, http.StatusUnauthorized, 401, "未登录")
 }
 
@@ -113,7 +113,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 	roomHandler := NewRoomHandler(nil, nil, hub)
 	messageHandler := NewMessageHandler(nil, hub)
 
-	authed := router.Group("/api/v1", withTestUser(1))
+	authed := router.Group("/api/v1/app", withTestUser(1))
 	{
 		authed.POST("/rooms", roomHandler.Create)
 		authed.POST("/rooms/:room_id/messages", messageHandler.Create)
@@ -130,7 +130,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 		{
 			name:        "create room rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/rooms",
+			path:        "/api/v1/app/rooms",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",
@@ -138,7 +138,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 		{
 			name:        "message rejects invalid room id",
 			method:      http.MethodPost,
-			path:        "/api/v1/rooms/not-number/messages",
+			path:        "/api/v1/app/rooms/not-number/messages",
 			body:        `{"content":"hello"}`,
 			wantCode:    500,
 			wantMessage: "参数错误",
@@ -146,7 +146,7 @@ func TestRoomAndMessageAPIInvalidRequests(t *testing.T) {
 		{
 			name:        "message rejects invalid json",
 			method:      http.MethodPost,
-			path:        "/api/v1/rooms/1/messages",
+			path:        "/api/v1/app/rooms/1/messages",
 			body:        "{",
 			wantCode:    500,
 			wantMessage: "参数错误",

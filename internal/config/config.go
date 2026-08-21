@@ -20,6 +20,8 @@ type Config struct {
 	COSCDNURL            string
 	AgoraAppID           string
 	AgoraAppCertificate  string
+	AdminUsername        string
+	AdminPassword        string
 }
 
 func Load() Config {
@@ -40,6 +42,8 @@ func Load() Config {
 		COSCDNURL:            getEnv("COS_CDN_URL"),
 		AgoraAppID:           getEnv("AGORA_APP_ID"),
 		AgoraAppCertificate:  getEnv("AGORA_APP_CERTIFICATE"),
+		AdminUsername:        getEnv("ADMIN_USERNAME"),
+		AdminPassword:        getEnv("ADMIN_PASSWORD"),
 	}
 }
 

@@ -19,11 +19,15 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	if cfg.JWTSecret == "" {
 		return nil, errors.New("JWT_SECRET不能为空")
 	}
+	if cfg.AdminUsername == "" || cfg.AdminPassword == "" {
+		return nil, errors.New("ADMIN_USERNAME和ADMIN_PASSWORD不能为空")
+	}
 
 	r := gin.Default()
 	r.Use(corsAll())
 
 	jwtSvc := auth.NewService(cfg.JWTSecret)
+	adminSvc := auth.NewAdminService(cfg.JWTSecret, cfg.AdminUsername, cfg.AdminPassword)
 	userRepo := repository.NewUserRepository(db)
 	roomRepo := repository.NewRoomRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
@@ -50,30 +54,32 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	uploadHandler := handler.NewUploadHandler(uploadSvc)
 	wsHandler := handler.NewWSHandler(jwtSvc, roomSvc, hub)
 	appVersionHandler := handler.NewAppVersionHandler(appVersionSvc)
+	adminHandler := handler.NewAdminHandler(adminSvc, roomSvc, appVersionSvc)
+	adminAppVersionHandler := handler.NewAdminAppVersionHandler(appVersionSvc)
 
-	api := r.Group("/api/v1")
+	app := r.Group("/api/v1/app")
 	{
 
-		api.GET("/app-version/latest", appVersionHandler.Latest)
+		app.GET("/version/latest", appVersionHandler.Latest)
 
-		authRoutes := api.Group("/auth")
+		authRoutes := app.Group("/auth")
 		{
 			authRoutes.POST("/email-code", userHandler.SendEmailCode)
 			authRoutes.POST("/email-login", userHandler.EmailLogin)
 		}
 
-		users := api.Group("/users", middleware.Auth(jwtSvc))
+		users := app.Group("/users", middleware.Auth(jwtSvc))
 		{
 			users.GET("/me", userHandler.Me)
 			users.PATCH("/me", userHandler.UpdateMe)
 		}
 
-		uploads := api.Group("/uploads", middleware.Auth(jwtSvc))
+		uploads := app.Group("/uploads", middleware.Auth(jwtSvc))
 		{
 			uploads.POST("/image", uploadHandler.UploadImage)
 		}
 
-		rooms := api.Group("/rooms", middleware.Auth(jwtSvc))
+		rooms := app.Group("/rooms", middleware.Auth(jwtSvc))
 		{
 			rooms.GET("", roomHandler.List)
 			rooms.POST("", roomHandler.Create)
@@ -86,7 +92,24 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 			rooms.POST("/:room_id/messages", messageHandler.Create)
 		}
 
-		api.GET("/ws/rooms/:room_id", wsHandler.ConnectRoom)
+		app.GET("/ws/rooms/:room_id", wsHandler.ConnectRoom)
+	}
+
+	admin := r.Group("/api/v1/admin")
+	{
+		admin.POST("/auth/login", adminHandler.Login)
+
+		protected := admin.Group("", middleware.AdminAuth(adminSvc))
+		{
+			protected.GET("/dashboard", adminHandler.Dashboard)
+			protected.GET("/rooms", adminHandler.Rooms)
+			protected.GET("/rooms/:room_id", adminHandler.RoomDetail)
+			protected.GET("/app-versions", adminAppVersionHandler.List)
+			protected.POST("/app-versions", adminAppVersionHandler.Create)
+			protected.PUT("/app-versions/:id", adminAppVersionHandler.Update)
+			protected.POST("/app-versions/:id/publish", adminAppVersionHandler.Publish)
+			protected.POST("/app-versions/:id/unpublish", adminAppVersionHandler.Unpublish)
+		}
 	}
 
 	return r, nil

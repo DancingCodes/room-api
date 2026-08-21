@@ -44,7 +44,7 @@ if ($Email -eq "") {
 }
 
 Write-Host "Sending email code to $Email..."
-Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-code" -Body @{
+Invoke-RoomApi -Method POST -Path "/api/v1/app/auth/email-code" -Body @{
     email = $Email
 } | Out-Null
 Write-Host "OK email code sent"
@@ -55,7 +55,7 @@ if ($emailCode -eq "") {
 }
 
 Write-Host "Logging in or creating user..."
-$login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-login" -Body @{
+$login = Invoke-RoomApi -Method POST -Path "/api/v1/app/auth/email-login" -Body @{
     email = $Email
     email_code = $emailCode
 }

@@ -57,7 +57,7 @@ function ConvertTo-WebSocketUrl {
         throw "BaseUrl must start with http:// or https://"
     }
 
-    return "$base/api/v1/ws/rooms/$RoomID"
+    return "$base/api/v1/app/ws/rooms/$RoomID"
 }
 
 function Receive-WebSocketText {
@@ -94,12 +94,12 @@ function Receive-WebSocketText {
 
 if ($Email -eq "" -or $EmailCode -eq "") {
     Write-Host "Email and email code are required for WebSocket smoke test."
-    Write-Host "Use /api/v1/auth/email-code first, then pass -Email and -EmailCode."
+    Write-Host "Use /api/v1/app/auth/email-code first, then pass -Email and -EmailCode."
     exit 0
 }
 
 Write-Host "Logging in or creating user with email code..."
-$login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-login" -Body @{
+$login = Invoke-RoomApi -Method POST -Path "/api/v1/app/auth/email-login" -Body @{
     email = $Email
     email_code = $EmailCode
 }
@@ -110,7 +110,7 @@ if ($token -eq "") {
 Write-Host "OK login => user_id $($login.data.user.id)"
 
 Write-Host "Creating room..."
-$roomResult = Invoke-RoomApi -Method POST -Path "/api/v1/rooms" -Token $token -Body @{
+$roomResult = Invoke-RoomApi -Method POST -Path "/api/v1/app/rooms" -Token $token -Body @{
     max_members = 8
 }
 $roomID = $roomResult.data.room.id
@@ -137,7 +137,7 @@ try {
     Write-Host "OK WebSocket connected"
 
     Write-Host "Sending message through HTTP..."
-    $messageResult = Invoke-RoomApi -Method POST -Path "/api/v1/rooms/$roomID/messages" -Token $token -Body @{
+    $messageResult = Invoke-RoomApi -Method POST -Path "/api/v1/app/rooms/$roomID/messages" -Token $token -Body @{
         content = "ws smoke test"
     }
     $messageID = $messageResult.data.message.id
@@ -176,7 +176,7 @@ try {
 Start-Sleep -Milliseconds 300
 
 Write-Host "Checking disconnect leave..."
-$me = Invoke-RoomApi -Method GET -Path "/api/v1/users/me" -Token $token
+$me = Invoke-RoomApi -Method GET -Path "/api/v1/app/users/me" -Token $token
 if ($null -ne $me.data.user.current_room_id) {
     throw "User is still in room after WebSocket disconnect: $($me.data.user.current_room_id)"
 }

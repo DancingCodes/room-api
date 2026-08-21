@@ -47,12 +47,12 @@ function Invoke-RoomApi {
 
 if ($Email -eq "" -or $EmailCode -eq "") {
     Write-Host "Email or email code not provided. Authenticated smoke tests skipped."
-    Write-Host "Use /api/v1/auth/email-code first, then pass -Email and -EmailCode."
+    Write-Host "Use /api/v1/app/auth/email-code first, then pass -Email and -EmailCode."
     exit 0
 }
 
 Write-Host "Logging in with email code..."
-$login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-login" -Body @{
+$login = Invoke-RoomApi -Method POST -Path "/api/v1/app/auth/email-login" -Body @{
     email = $Email
     email_code = $EmailCode
 }
@@ -63,11 +63,11 @@ if ($token -eq "") {
 Write-Host "OK login => user_id $($login.data.user.id)"
 
 Write-Host "Checking current user..."
-$me = Invoke-RoomApi -Method GET -Path "/api/v1/users/me" -Token $token
+$me = Invoke-RoomApi -Method GET -Path "/api/v1/app/users/me" -Token $token
 Write-Host "OK /users/me => $($me.data.user.email)"
 
 Write-Host "Creating room..."
-$roomResult = Invoke-RoomApi -Method POST -Path "/api/v1/rooms" -Token $token -Body @{
+$roomResult = Invoke-RoomApi -Method POST -Path "/api/v1/app/rooms" -Token $token -Body @{
     max_members = 8
 }
 $roomID = $roomResult.data.room.id
@@ -77,17 +77,17 @@ if ($roomID -le 0) {
 Write-Host "OK create room => room_id $roomID"
 
 Write-Host "Sending message..."
-$messageResult = Invoke-RoomApi -Method POST -Path "/api/v1/rooms/$roomID/messages" -Token $token -Body @{
+$messageResult = Invoke-RoomApi -Method POST -Path "/api/v1/app/rooms/$roomID/messages" -Token $token -Body @{
     content = "smoke test"
 }
 Write-Host "OK create message => message_id $($messageResult.data.message.id)"
 
 Write-Host "Listing messages..."
-$messages = Invoke-RoomApi -Method GET -Path "/api/v1/rooms/$roomID/messages?limit=20" -Token $token
+$messages = Invoke-RoomApi -Method GET -Path "/api/v1/app/rooms/$roomID/messages?limit=20" -Token $token
 Write-Host "OK list messages => count $($messages.data.list.Count)"
 
 Write-Host "Leaving room..."
-Invoke-RoomApi -Method POST -Path "/api/v1/rooms/$roomID/leave" -Token $token | Out-Null
+Invoke-RoomApi -Method POST -Path "/api/v1/app/rooms/$roomID/leave" -Token $token | Out-Null
 Write-Host "OK leave room"
 
 Write-Host "Smoke test completed."
