@@ -12,7 +12,6 @@ import (
 	"room-api/internal/middleware"
 	"room-api/internal/realtime"
 	"room-api/internal/repository"
-	"room-api/internal/response"
 	"room-api/internal/service"
 )
 
