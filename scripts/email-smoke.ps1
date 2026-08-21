@@ -43,10 +43,6 @@ if ($Email -eq "") {
     exit 0
 }
 
-Write-Host "Checking health..."
-$health = Invoke-RoomApi -Method GET -Path "/health"
-Write-Host "OK /health => $($health.data.status)"
-
 Write-Host "Sending email code to $Email..."
 Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-code" -Body @{
     email = $Email

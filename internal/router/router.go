@@ -52,12 +52,9 @@ func New(cfg config.Config, db *gorm.DB) (*gin.Engine, error) {
 	wsHandler := handler.NewWSHandler(jwtSvc, roomSvc, hub)
 	appVersionHandler := handler.NewAppVersionHandler(appVersionSvc)
 
-	r.GET("/health", func(c *gin.Context) {
-		response.OK(c, gin.H{"status": "up"})
-	})
-
 	api := r.Group("/api/v1")
 	{
+
 		api.GET("/app-version/latest", appVersionHandler.Latest)
 
 		authRoutes := api.Group("/auth")

@@ -98,10 +98,6 @@ if ($Email -eq "" -or $EmailCode -eq "") {
     exit 0
 }
 
-Write-Host "Checking health..."
-$health = Invoke-RoomApi -Method GET -Path "/health"
-Write-Host "OK /health => $($health.data.status)"
-
 Write-Host "Logging in or creating user with email code..."
 $login = Invoke-RoomApi -Method POST -Path "/api/v1/auth/email-login" -Body @{
     email = $Email

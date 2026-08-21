@@ -45,10 +45,6 @@ function Invoke-RoomApi {
     return $response
 }
 
-Write-Host "Checking health..."
-$health = Invoke-RoomApi -Method GET -Path "/health"
-Write-Host "OK /health => $($health.data.status)"
-
 if ($Email -eq "" -or $EmailCode -eq "") {
     Write-Host "Email or email code not provided. Authenticated smoke tests skipped."
     Write-Host "Use /api/v1/auth/email-code first, then pass -Email and -EmailCode."
