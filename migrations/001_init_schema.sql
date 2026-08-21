@@ -54,7 +54,6 @@ CREATE TABLE app_versions (
   id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   version_code BIGINT UNSIGNED NOT NULL,
   apk_url VARCHAR(512) NOT NULL,
-  apk_sha256 CHAR(64) NOT NULL,
   release_notes TEXT NOT NULL,
   is_published TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL,

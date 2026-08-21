@@ -6,7 +6,6 @@ type AppVersion struct {
 	ID           uint64    `gorm:"primaryKey;column:id"`
 	VersionCode  uint64    `gorm:"column:version_code"`
 	APKURL       string    `gorm:"column:apk_url"`
-	APKSHA256    string    `gorm:"column:apk_sha256"`
 	ReleaseNotes string    `gorm:"column:release_notes"`
 	IsPublished  bool      `gorm:"column:is_published"`
 	CreatedAt    time.Time `gorm:"column:created_at"`
